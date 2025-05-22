@@ -10,6 +10,7 @@ class Detection(BaseModel):
     risk: Literal["red", "orange", "yellow", "green"]
     captured_at: datetime
     frame_url: Optional[str]
+    fov: Optional[List[List[float]]]  # [[u1,v1], [u2,v2], …] (정규화 좌표)
 
 class Result(BaseModel):
     ok: bool
