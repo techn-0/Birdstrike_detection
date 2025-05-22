@@ -7,6 +7,7 @@ interface Det {
   pos: [number, number];      // [u,v] 0~1
   risk: string;
   frame_url?: string;
+  fov?: [number, number][];   // [[u,v], …]
 }
 
 const bounds: L.LatLngBoundsExpression = [[0, 0], [647, 1000]]; // 배경 해상도 세로, 가로
