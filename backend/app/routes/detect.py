@@ -1,10 +1,9 @@
 # detect.py
+import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from ..db import db
-from ..models import Detection, Result  # Result: 새로 정의할 응답 모델
-from datetime import datetime
-import logging
+from ..models import Detection, Result
 from app.ws_manager import manager
 
 logger = logging.getLogger(__name__)
@@ -31,12 +30,12 @@ async def ingest(det: Detection):
         await manager.broadcast(det.dict())
 
         # 3) 성공 응답
-        return {"ok": True, "error": None}
+        return Result(ok=True, error=None)
 
     except Exception as exc:
         # 에러 로깅
         logger.error(f"Failed to ingest detection: {exc}", exc_info=True)
-        # 클라이언트에 내부 서버 에러 알림
+        # HTTP 500 반환
         raise HTTPException(
             status_code=500,
             detail="서버 내부 오류로 탐지 결과를 처리하지 못했습니다."

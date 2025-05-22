@@ -5,6 +5,10 @@ from fastapi.staticfiles import StaticFiles
 from app.routes import detect, cctv
 from app.routes import ws_route
 
+import logging
+logging.basicConfig(level=logging.INFO, 
+                    format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+
 app = FastAPI()
 
 # 라우터 등록
