@@ -10,3 +10,7 @@ class Detection(BaseModel, extra=Extra.allow):   # 추가필드 허용!
     risk: str = "green"
     captured_at: datetime
     frame_url: Optional[str]
+
+class Result(BaseModel):
+    ok: bool
+    error: Optional[str] = None
