@@ -1,0 +1,16 @@
+@import url("leaflet/dist/leaflet.css");
+
+html, body, #root {
+  height: 100%;
+  margin: 0;        /* 브라우저 기본 여백 제거 */
+}
+
+/* 위험도 색상용 원형 div아이콘 */
+.risk-red,.risk-orange,.risk-yellow,.risk-green{
+  width:32px;height:32px;border-radius:50%;
+  border:2px solid #000;
+}
+.risk-red    {background:#ff4040;}
+.risk-orange {background:#ffb340;}
+.risk-yellow {background:#ffd740;}
+.risk-green  {background:#40c040;}

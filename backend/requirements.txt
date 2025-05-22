@@ -1,0 +1,5 @@
+fastapi
+uvicorn[standard]
+motor          # Async MongoDB Driver
+pydantic
+python-dotenv  # (옵션) .env 로 민감정보 분리

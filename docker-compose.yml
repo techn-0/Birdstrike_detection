@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  # ① MongoDB 컨테이너
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"          # 호스트:컨테이너
+    volumes:
+      - ./_data/mongo:/data/db # 로컬 폴더에 DB 파일 영구 저장
+
+  # ② FastAPI 컨테이너
+  api:
+    build: ./backend           # 위 Dockerfile 이용해 이미지 빌드
+    ports:
+      - "8000:8000"            # http://localhost:8000
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    volumes:
+      - ./backend:/code        # 코드 바로 반영(핫리로드)
+    depends_on:
+      - mongo                  # mongo가 먼저 떠야 api 시작
