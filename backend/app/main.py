@@ -15,6 +15,7 @@ app.include_router(ws_route.router)
 # 정적 파일(프레임 이미지) 서빙
 app.mount("/frames", StaticFiles(directory="app/static/frames"), name="frames")
 
+
 @app.get("/ping")
 async def ping():
     return {"ok": True}
