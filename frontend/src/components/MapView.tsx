@@ -17,7 +17,7 @@ export default function MapView({ detections }: { detections: Det[] }) {
     <MapContainer
       crs={L.CRS.Simple}
       bounds={bounds}
-      style={{ height: "100vh", width: "100vw" }}
+      style={{ height: "90vh", width: "90vw" }}
     >
       <ImageOverlay url="/airport_bg.png" bounds={bounds} />
       {detections.map((d, i) => (
