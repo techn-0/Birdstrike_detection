@@ -8,13 +8,20 @@ interface Det {
   pos: [number, number];      // [u,v] 0~1
   risk: "red" | "orange" | "yellow" | "green";
   frame_url?: string;
-  fov?: [number, number][];   // [[u,v], …] (0~1 정규화)
+  fov?: {
+    direction: number; // 중심 방향 (도)
+    angle: number;     // 시야각 (도)
+    length: number;    // 시야 거리 (0~1)
+  };
 }
 
 const bounds: L.LatLngBoundsExpression = [[0, 0], [647, 1000]]; // 배경 해상도 세로, 가로
 const API = process.env.REACT_APP_API_HTTP;   // http://localhost:8000
 
 export default function MapView({ detections }: { detections: Det[] }) {
+  // 각도(도) → 라디안 변환 함수
+  const deg2rad = (deg: number) => (deg * Math.PI) / 180;
+
   return (
     <MapContainer
       crs={L.CRS.Simple}
@@ -27,10 +34,28 @@ export default function MapView({ detections }: { detections: Det[] }) {
         // 1) 마커 위치 계산
         const markerPos: [number, number] = [d.pos[1] * 647, d.pos[0] * 1000];
 
-        // 2) fov 좌표가 있을 때, 다각형용 좌표로 변환
-        const polyCoords: [number, number][] | undefined = d.fov?.map(
-          ([u, v]) => [v * 647, u * 1000] as [number, number]
-        );
+        // 2) fov가 각도 정보일 때 삼각형 꼭짓점 계산
+        let polyCoords: [number, number][] | undefined = undefined;
+        if (d.fov) {
+          const { direction, angle, length } = d.fov;
+          const [u, v] = d.pos;
+          // 중심점(카메라)
+          const center: [number, number] = [v * 647, u * 1000];
+          // 좌우 끝점 계산
+          const half = angle / 2;
+          const rad1 = deg2rad(direction - half);
+          const rad2 = deg2rad(direction + half);
+          // Leaflet 좌표계: [y, x] = [v*647, u*1000]
+          const left: [number, number] = [
+            (v + length * Math.sin(rad1)) * 647,
+            (u + length * Math.cos(rad1)) * 1000,
+          ];
+          const right: [number, number] = [
+            (v + length * Math.sin(rad2)) * 647,
+            (u + length * Math.cos(rad2)) * 1000,
+          ];
+          polyCoords = [center, left, right];
+        }
 
         return (
           <React.Fragment key={i}>

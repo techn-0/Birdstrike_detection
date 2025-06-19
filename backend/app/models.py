@@ -3,6 +3,11 @@ from pydantic import BaseModel
 from typing import Optional, Literal, List
 from datetime import datetime
 
+class FovAngle(BaseModel):
+    direction: float # 방향 각도 (0-360도) 0: 동쪽, 90: 북쪽, 180: 서쪽, 270: 남쪽
+    angle: float # 시야각 (0-180도)
+    length: float # 거리
+
 class Detection(BaseModel):
     cctv_id: str
     bbox: List[float]     # [x, y, w, h]
@@ -10,7 +15,7 @@ class Detection(BaseModel):
     risk: Literal["red", "orange", "yellow", "green"]
     captured_at: datetime
     frame_url: Optional[str]
-    fov: Optional[List[List[float]]]  # [[u1,v1], [u2,v2], …] (정규화 좌표)
+    fov: Optional[FovAngle]  # 각도 기반만 허용
 
 class Result(BaseModel):
     ok: bool
