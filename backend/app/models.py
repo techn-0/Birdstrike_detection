@@ -20,3 +20,12 @@ class Detection(BaseModel):
 class Result(BaseModel):
     ok: bool
     error: Optional[str] = None
+
+class CctvMeta(BaseModel):
+    id: str
+    name: str
+    pos: list[float]  # [u, v]
+    direction: float
+    angle: float
+    length: float
+    color: Optional[str] = None   # 색상 필드 추가

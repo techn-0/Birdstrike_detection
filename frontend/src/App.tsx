@@ -2,30 +2,56 @@ import { useState, useEffect } from "react";
 import MapView from "./components/MapView";
 import SidePanel from "./components/SidePanel";
 import { useWebSocket } from "./hooks/useWebSocket";
+import { CctvMeta } from "./types";
 
-const DETS_KEY = "cctv_detections";
+const API = process.env.REACT_APP_API_HTTP;
 
 function App() {
-  // 1. LocalStorage에서 초기값 불러오기
-  const [dets, setDets] = useState<any[]>(() => {
-    const saved = localStorage.getItem(DETS_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
+  // CCTV 목록 상태
+  const [cctvs, setCctvs] = useState<CctvMeta[]>([]);
+  // Detection(알람) 상태
+  const [dets, setDets] = useState<any[]>([]);
 
-  // 2. 상태가 바뀔 때마다 LocalStorage에 저장
+  // CCTV 목록 불러오기
   useEffect(() => {
-    localStorage.setItem(DETS_KEY, JSON.stringify(dets));
-  }, [dets]);
+    fetch(`${API}/cctv/meta`)
+      .then((res) => res.json())
+      .then(setCctvs);
+  }, []);
 
-  // 3. WS로 새 데이터 받으면 배열 추가
+  // WS로 새 Detection 받기
   useWebSocket((d) => {
     setDets((prev) => [...prev, d]);
   });
 
+  // CCTV 추가/수정 함수
+  const addOrUpdateCctv = async (meta: CctvMeta) => {
+    await fetch(`${API}/cctv/meta`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(meta),
+    });
+    // 수정 후 목록을 다시 받아와서 setCctvs로 갱신
+    const res = await fetch(`${API}/cctv/meta`);
+    setCctvs(await res.json());
+  };
+
+  // CCTV 삭제 함수
+  const deleteCctv = async (id: string) => {
+    await fetch(`${API}/cctv/meta/${id}`, { method: "DELETE" });
+    // 삭제 후 목록을 서버에서 다시 받아옴
+    const res = await fetch(`${API}/cctv/meta`);
+    setCctvs(await res.json());
+  };
+
   return (
     <>
-      <MapView detections={dets} />
-      <SidePanel />
+      <MapView cctvs={cctvs} detections={dets} />
+      <SidePanel
+        cctvs={cctvs}
+        onAddOrUpdate={addOrUpdateCctv}
+        onDelete={deleteCctv}
+      />
     </>
   );
 }

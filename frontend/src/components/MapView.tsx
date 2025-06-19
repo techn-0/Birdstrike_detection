@@ -1,26 +1,36 @@
 import React from "react";
-import { MapContainer, ImageOverlay, Marker, Popup, Polygon } from "react-leaflet";
+import { MapContainer, ImageOverlay, Marker, Popup, Polygon, Tooltip } from "react-leaflet";
 import L from "leaflet";
+import { CctvMeta } from "../types";
 
-interface Det {
-  _id?: string;
-  cctv_id: string;
-  pos: [number, number];      // [u,v] 0~1
-  risk: "red" | "orange" | "yellow" | "green";
-  frame_url?: string;
-  fov?: {
-    direction: number; // 중심 방향 (도)
-    angle: number;     // 시야각 (도)
-    length: number;    // 시야 거리 (0~1)
-  };
-}
+const bounds: L.LatLngBoundsExpression = [[0, 0], [647, 1000]];
+const API = process.env.REACT_APP_API_HTTP;
 
-const bounds: L.LatLngBoundsExpression = [[0, 0], [647, 1000]]; // 배경 해상도 세로, 가로
-const API = process.env.REACT_APP_API_HTTP;   // http://localhost:8000
-
-export default function MapView({ detections }: { detections: Det[] }) {
-  // 각도(도) → 라디안 변환 함수
+export default function MapView({
+  cctvs,
+  detections,
+}: {
+  cctvs: CctvMeta[];
+  detections: any[];
+}) {
   const deg2rad = (deg: number) => (deg * Math.PI) / 180;
+
+  // 동그란 마커 스타일 동적 생성
+  function getCctvIcon(color: string) {
+    return L.divIcon({
+      className: "",
+      html: `<div style="
+        width:22px;height:22px;
+        background:${color};
+        border-radius:50%;
+        border:2px solid #fff;
+        box-shadow:0 0 4px #0003;
+        display:flex;align-items:center;justify-content:center;
+      "></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+    });
+  }
 
   return (
     <MapContainer
@@ -30,68 +40,75 @@ export default function MapView({ detections }: { detections: Det[] }) {
     >
       <ImageOverlay url="/airport_bg.png" bounds={bounds} />
 
-      {detections.map((d, i) => {
-        // 1) 마커 위치 계산
-        const markerPos: [number, number] = [d.pos[1] * 647, d.pos[0] * 1000];
-
-        // 2) fov가 각도 정보일 때 삼각형 꼭짓점 계산
-        let polyCoords: [number, number][] | undefined = undefined;
-        if (d.fov) {
-          const { direction, angle, length } = d.fov;
-          const [u, v] = d.pos;
-          // 중심점(카메라)
-          const center: [number, number] = [v * 647, u * 1000];
-          // 좌우 끝점 계산
-          const half = angle / 2;
-          const rad1 = deg2rad(direction - half);
-          const rad2 = deg2rad(direction + half);
-          // Leaflet 좌표계: [y, x] = [v*647, u*1000]
-          const left: [number, number] = [
-            (v + length * Math.sin(rad1)) * 647,
-            (u + length * Math.cos(rad1)) * 1000,
-          ];
-          const right: [number, number] = [
-            (v + length * Math.sin(rad2)) * 647,
-            (u + length * Math.cos(rad2)) * 1000,
-          ];
-          polyCoords = [center, left, right];
-        }
+      {/* CCTV 마커와 FOV */}
+      {cctvs.map((c) => {
+        const markerPos: [number, number] = [c.pos[1] * 647, c.pos[0] * 1000];
+        const center: [number, number] = [c.pos[1] * 647, c.pos[0] * 1000];
+        const half = c.angle / 2;
+        const rad1 = deg2rad(c.direction - half);
+        const rad2 = deg2rad(c.direction + half);
+        const left: [number, number] = [
+          (c.pos[1] + c.length * Math.sin(rad1)) * 647,
+          (c.pos[0] + c.length * Math.cos(rad1)) * 1000,
+        ];
+        const right: [number, number] = [
+          (c.pos[1] + c.length * Math.sin(rad2)) * 647,
+          (c.pos[0] + c.length * Math.cos(rad2)) * 1000,
+        ];
+        const polyCoords = [center, left, right];
+        const color = c.color || "#007bff";
 
         return (
-          <React.Fragment key={i}>
-            {/* 마커 */}
+          <React.Fragment key={c.id}>
             <Marker
               position={markerPos}
-              icon={L.divIcon({ className: `risk-${d.risk}` })}
+              icon={getCctvIcon(color)}
             >
+              <Tooltip direction="bottom" offset={[0, 12]} permanent>
+                <span style={{ color: "#222", fontWeight: "bold", background: "#fff8", padding: "2px 6px", borderRadius: 4 }}>
+                  {c.name}
+                </span>
+              </Tooltip>
               <Popup>
-                CCTV {d.cctv_id}<br />
-                Risk: {d.risk}<br />
-                {d.frame_url && (
-                  <img src={`${API}${d.frame_url}`} alt="frame" width={200} />
-                )}
+                CCTV {c.name} ({c.id})
               </Popup>
             </Marker>
-
-            {/* FOV 다각형 */}
-            {polyCoords && (
-              <Polygon
-                positions={polyCoords}
-                pathOptions={{
-                  color:
-                    d.risk === "red"
-                      ? "#f03"
-                      : d.risk === "orange"
-                      ? "#f80"
-                      : d.risk === "yellow"
-                      ? "#fc0"
-                      : "#0a0",
-                  weight: 2,
-                  fillOpacity: 0.1,
-                }}
-              />
-            )}
+            <Polygon
+              positions={polyCoords}
+              pathOptions={{
+                color: color,
+                weight: 2,
+                fillOpacity: 0.15,
+                fillColor: color,
+              }}
+            />
           </React.Fragment>
+        );
+      })}
+
+      {/* Detection(알람) 마커: CCTV 위에만 표시 */}
+      {detections.map((d, i) => {
+        const cctv = cctvs.find((c) => c.id === d.cctv_id);
+        if (!cctv) return null;
+        const markerPos: [number, number] = [cctv.pos[1] * 647, cctv.pos[0] * 1000];
+        return (
+          <Marker
+            key={i}
+            position={markerPos}
+            icon={L.divIcon({ className: `risk-${d.risk}` })}
+          >
+            <Popup>
+              <b>탐지!</b>
+              <br />
+              CCTV {d.cctv_id}
+              <br />
+              Risk: {d.risk}
+              <br />
+              {d.frame_url && (
+                <img src={`${API}${d.frame_url}`} alt="frame" width={200} />
+              )}
+            </Popup>
+          </Marker>
         );
       })}
     </MapContainer>
