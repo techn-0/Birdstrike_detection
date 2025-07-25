@@ -15,7 +15,8 @@ class Detection(BaseModel):
     risk: Literal["red", "orange", "yellow", "green"]
     captured_at: datetime
     frame_url: Optional[str]
-    fov: Optional[FovAngle]  # 각도 기반만 허용
+    fov: Optional[FovAngle] = None  # ← 이렇게 하면 fov 없이도 탐지 결과 저장 가능
+    bird_count: int = 1   # 새 마리 수 기본값 1로 추가
 
 class Result(BaseModel):
     ok: bool

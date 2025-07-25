@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { CctvMeta } from "../types";
+import { CctvMeta, Detection } from "../types";
 
 interface Props {
   cctvs: CctvMeta[];
   onAddOrUpdate: (meta: CctvMeta) => void;
   onDelete: (id: string) => void;
+  detections: Detection[];
+  onCctvNameClick?: (id: string) => void; // ← 추가
 }
 
-export default function SidePanel({ cctvs, onAddOrUpdate, onDelete }: Props) {
+export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, onCctvNameClick }: Props) {
   // 위치 입력은 문자열로 관리
   const [form, setForm] = useState<Partial<CctvMeta> & { posInput?: string }>({});
 
@@ -15,18 +17,61 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete }: Props) {
   const isEdit = form.id && cctvs.some(c => c.id === form.id);
 
   return (
-    <div className="fixed top-0 right-0 w-64 h-full bg-white shadow-lg p-4 overflow-y-auto">
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        right: 0,
+        width: "340px",
+        height: "100vh",
+        background: "rgba(255,255,255,0.85)", // 반투명 흰색
+        boxShadow: "-2px 0 12px #0003",
+        padding: "24px 16px",
+        overflowY: "auto",
+        zIndex: 2000, // 지도보다 위에 오도록 충분히 큰 값
+        borderLeft: "1px solid #eee",
+        display: "flex",
+        flexDirection: "column",
+        backdropFilter: "blur(4px)", // 선택사항: 배경 흐림 효과
+      }}
+    >
       <h2 className="font-bold mb-2">CCTV 목록</h2>
       <ul>
         {cctvs.map(c => (
           <li key={c.id} className="mb-2 border-b pb-1">
             <div>
-              <b>이름:</b> {c.name}<br />
+              <b
+                style={{
+                  cursor: "pointer",
+                  color: c.color || "#007bff" // 마커 색상과 일치하게
+                }}
+                onClick={() => onCctvNameClick && onCctvNameClick(c.id)}
+              >
+                이름: {c.name}
+              </b>
+              <br />
               <b>ID:</b> {c.id}
             </div>
             <div className="text-xs text-gray-500">
               위치: {c.pos.join(", ")}<br />
               방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}
+            </div>
+            <div>
+              {/* <b>탐지 내역:</b>
+              <ul>
+                {detections.filter(d => d.cctv_id === c.id).map((d, i) => (
+                  <li key={i}>
+                    {d.captured_at} 위험도: {d.risk}
+                    <br />
+                    <b>탐지된 새 수:</b> {d.bird_count}
+                    {d.frame_url && (
+                      <div>
+                        <img src={`${process.env.REACT_APP_API_HTTP}${d.frame_url}`} alt="frame" width={120} />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul> */}
             </div>
             <button className="text-blue-500 mr-2" onClick={() => setForm({ ...c, posInput: c.pos.join(",") })}>
               수정

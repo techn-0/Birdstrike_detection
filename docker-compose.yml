@@ -5,7 +5,7 @@ services:
   mongo:
     image: mongo:6
     ports:
-      - "27017:27017"          # 호스트:컨테이너
+      - "27018:27017"          # 호스트:컨테이너
     volumes:
       - ./_data/mongo:/data/db # 로컬 폴더에 DB 파일 영구 저장
 
