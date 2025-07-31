@@ -164,3 +164,14 @@ curl -X POST http://localhost:8000/detect/result -H "Content-Type: application/j
 ![image.png](attachment:69af306f-17d9-41df-98bd-c972b17cbd74:image.png)
 
 ![image.png](attachment:e445a8a6-74ed-4f03-9acf-6083058607a7:image.png)
+
+
+이상 발생시
+# 현재 디렉토리 확인
+cd D:\Birdstrike_detection
+
+# 모든 컨테이너 중지 및 정리
+docker compose down --volumes --remove-orphans
+
+# 재빌드 및 실행
+docker compose up --build
