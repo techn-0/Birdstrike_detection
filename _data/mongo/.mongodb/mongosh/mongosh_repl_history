@@ -1,2 +1,0 @@
-db.detections_202505.find().pretty()
-use birdwatch
