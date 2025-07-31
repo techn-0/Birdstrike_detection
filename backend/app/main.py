@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes import detect, cctv
 from app.routes import ws_route
+from app.routers import auth
 
 import logging
 logging.basicConfig(level=logging.INFO, 
@@ -15,13 +16,14 @@ app = FastAPI()
 # CORS 미들웨어 추가
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 개발 환경에서는 *로 허용
+    allow_origins=["http://localhost:3000"],  # 구체적인 프론트엔드 URL 지정
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # 라우터 등록
+app.include_router(auth.router, prefix="/api")
 app.include_router(detect.router)
 app.include_router(cctv.router)
 app.include_router(ws_route.router)

@@ -1,5 +1,11 @@
 fastapi
 uvicorn[standard]
 motor          # Async MongoDB Driver
-pydantic
+pydantic[email]
+email-validator
 python-dotenv  # (옵션) .env 로 민감정보 분리
+# AUTH-ADD-START
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.6
+# AUTH-ADD-END

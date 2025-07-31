@@ -1,30 +1,68 @@
 # app/routes/cctv.py
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from ..db import db
 from ..models import CctvMeta
+from app.dependencies import get_current_user, require_admin, get_current_user_optional
+from app.models.user import UserResponse
+from typing import Optional
 
 router = APIRouter()
 
+# 임시 CCTV 데이터 저장소 (MongoDB 대신)
+cctv_storage = {}
+
 
 @router.post("/cctv/meta")
-async def upsert(meta: dict):
-    await db.cctv.update_one({"_id": meta["id"]},
-                             {"$set": meta}, upsert=True)
-    return {"ok": True}
+async def upsert(meta: dict, current_user: UserResponse = Depends(require_admin)):
+    """CCTV 메타데이터 추가/수정 (관리자 전용)"""
+    try:
+        # MongoDB 사용 시도
+        await db.cctv.update_one({"_id": meta["id"]},
+                                 {"$set": meta}, upsert=True)
+        return {"ok": True}
+    except Exception as e:
+        # MongoDB 실패 시 메모리 저장소 사용
+        cctv_id = meta.get("id")
+        if cctv_id:
+            cctv_storage[cctv_id] = meta
+        return {"ok": True, "note": "Stored in memory (MongoDB unavailable)"}
 
-#  CCTV 목록 조회 API
+
+#  CCTV 목록 조회 API (로그인 사용자만)
 @router.get("/cctv/meta")
-async def list_cctv():
-    docs = await db.cctv.find().to_list(100)
-    for d in docs:
-        d["id"] = d["_id"]
-        del d["_id"]
-    return docs
+async def list_cctv(current_user: Optional[UserResponse] = Depends(get_current_user_optional)):
+    """CCTV 목록 조회 (로그인하지 않아도 조회 가능)"""
+    try:
+        # MongoDB 사용 시도
+        docs = await db.cctv.find().to_list(100)
+        for d in docs:
+            d["id"] = d["_id"]
+            del d["_id"]
+        return docs
+    except Exception as e:
+        # MongoDB 실패 시 메모리 저장소 사용
+        cctv_list = []
+        for cctv_id, cctv_data in cctv_storage.items():
+            cctv_copy = cctv_data.copy()
+            cctv_copy["id"] = cctv_id
+            cctv_list.append(cctv_copy)
+        return cctv_list
 
-# CCTV 삭제
+
+# CCTV 삭제 (관리자 전용)
 @router.delete("/cctv/meta/{cctv_id}")
-async def delete_cctv(cctv_id: str):
-    result = await db.cctv.delete_one({"_id": cctv_id})
-    if result.deleted_count == 0:
-        return {"ok": False, "error": "Not found"}
-    return {"ok": True}
+async def delete_cctv(cctv_id: str, current_user: UserResponse = Depends(require_admin)):
+    """CCTV 삭제 (관리자 전용)"""
+    try:
+        # MongoDB 사용 시도
+        result = await db.cctv.delete_one({"_id": cctv_id})
+        if result.deleted_count == 0:
+            return {"ok": False, "error": "Not found"}
+        return {"ok": True}
+    except Exception as e:
+        # MongoDB 실패 시 메모리 저장소 사용
+        if cctv_id in cctv_storage:
+            del cctv_storage[cctv_id]
+            return {"ok": True, "note": "Deleted from memory (MongoDB unavailable)"}
+        else:
+            return {"ok": False, "error": "Not found"}

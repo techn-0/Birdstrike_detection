@@ -5,8 +5,9 @@ import Header from "./components/Header";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { CctvMeta, Detection } from "./types";
 import DetectionModal from "./components/DetectionModal";
+import { AuthProvider } from "./contexts/AuthContext";
 
-const API = process.env.REACT_APP_API_HTTP;
+const API = process.env.REACT_APP_API_HTTP || 'http://localhost:8000';
 
 function App() {
   const [cctvs, setCctvs] = useState<CctvMeta[]>([]);
@@ -15,7 +16,9 @@ function App() {
 
   // CCTV 목록 불러오기
   useEffect(() => {
-    fetch(`${API}/cctv/meta`)
+    fetch(`${API}/cctv/meta`, {
+      credentials: "include" // 쿠키 포함
+    })
       .then((res) => res.json())
       .then(setCctvs);
   }, []);
@@ -58,16 +61,24 @@ function App() {
     await fetch(`${API}/cctv/meta`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // 쿠키 포함
       body: JSON.stringify(meta),
     });
-    const res = await fetch(`${API}/cctv/meta`);
+    const res = await fetch(`${API}/cctv/meta`, {
+      credentials: "include"
+    });
     setCctvs(await res.json());
   };
 
   // CCTV 삭제 함수
   const deleteCctv = async (id: string) => {
-    await fetch(`${API}/cctv/meta/${id}`, { method: "DELETE" });
-    const res = await fetch(`${API}/cctv/meta`);
+    await fetch(`${API}/cctv/meta/${id}`, { 
+      method: "DELETE",
+      credentials: "include" // 쿠키 포함
+    });
+    const res = await fetch(`${API}/cctv/meta`, {
+      credentials: "include"
+    });
     setCctvs(await res.json());
   };
 
@@ -116,4 +127,13 @@ function App() {
   );
 }
 
-export default App;
+// AuthProvider로 App을 감싸는 래퍼 컴포넌트
+function AppWithAuth() {
+  return (
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+}
+
+export default AppWithAuth;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CctvMeta, Detection } from "../types";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Props {
   cctvs: CctvMeta[];
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, onCctvNameClick }: Props) {
+  const { user, isAdmin } = useAuth();
   const [form, setForm] = useState<Partial<CctvMeta> & { posInput?: string }>({});
 
   const isEdit = form.id && cctvs.some(c => c.id === form.id);
@@ -55,29 +57,41 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
               방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}
             </div>
             <div className="mt-2">
-              <button 
-                className="text-blue-500 hover:underline mr-3" 
-                onClick={() => setForm({ ...c, posInput: c.pos.join(",") })}
-              >
-                수정
-              </button>
-              <button 
-                className="text-red-500 hover:underline" 
-                onClick={() => onDelete(c.id)}
-              >
-                삭제
-              </button>
+              {isAdmin() && (
+                <>
+                  <button 
+                    className="text-blue-500 hover:underline mr-3" 
+                    onClick={() => setForm({ ...c, posInput: c.pos.join(",") })}
+                  >
+                    수정
+                  </button>
+                  <button 
+                    className="text-red-500 hover:underline" 
+                    onClick={() => onDelete(c.id)}
+                  >
+                    삭제
+                  </button>
+                </>
+              )}
+              {!user && (
+                <span className="text-gray-400 text-sm">로그인하면 관리 기능을 사용할 수 있습니다</span>
+              )}
+              {user && !isAdmin() && (
+                <span className="text-gray-400 text-sm">관리자 권한이 필요합니다</span>
+              )}
             </div>
           </li>
         ))}
       </ul>
       
-      <h3 className="font-bold mt-4 mb-3 text-blue-700">CCTV 추가/수정</h3>
-      <form
-        className="flex flex-col gap-2"
-        onSubmit={e => {
-          e.preventDefault();
-          const posArr = form.posInput?.split(",").map(Number) as [number, number] | undefined;
+      {isAdmin() ? (
+        <>
+          <h3 className="font-bold mt-4 mb-3 text-blue-700">CCTV 추가/수정</h3>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={e => {
+              e.preventDefault();
+              const posArr = form.posInput?.split(",").map(Number) as [number, number] | undefined;
           if (
             form.id &&
             form.name &&
@@ -164,6 +178,17 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
           저장
         </button>
       </form>
+        </>
+      ) : (
+        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-center">
+          <h3 className="font-bold mb-2 text-gray-600">CCTV 관리</h3>
+          {!user ? (
+            <p className="text-sm text-gray-500">로그인하면 CCTV를 관리할 수 있습니다</p>
+          ) : (
+            <p className="text-sm text-gray-500">CCTV 추가/수정/삭제는 관리자만 가능합니다</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
