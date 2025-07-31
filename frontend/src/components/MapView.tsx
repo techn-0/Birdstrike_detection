@@ -46,11 +46,11 @@ export default function MapView({
   }
 
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
+    <div style={{ width: "100%", height: "100%" }}>
       <MapContainer
         crs={L.CRS.Simple}
         bounds={bounds}
-        style={{ height: "100vh", width: "100vw" }}
+        style={{ height: "100%", width: "100%" }}
         zoom={0}           // 초기 확대 레벨
         minZoom={-2}       // 더 멀리까지 축소 가능
         maxZoom={4}        // 더 가까이까지 확대 가능
