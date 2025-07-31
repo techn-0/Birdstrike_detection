@@ -6,16 +6,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import detect, cctv
 from app.routes import ws_route
 from app.routers import auth
-from app.storage import init_test_users
+from app.storage import init_storage
 
 import logging
+import asyncio
 logging.basicConfig(level=logging.INFO, 
                     format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 app = FastAPI()
 
-# 테스트 사용자 초기화
-init_test_users()
+# MongoDB와 메모리 저장소 초기화
+@app.on_event("startup")
+async def startup_event():
+    """앱 시작 시 저장소 초기화"""
+    await init_storage()
 
 # CORS 미들웨어 추가
 app.add_middleware(

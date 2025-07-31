@@ -4,6 +4,7 @@ from typing import Optional
 from app.models.user import UserResponse, TokenData
 from app.core.security import verify_jwt
 from app.storage import fake_users_db
+from app.services.user_service import UserService
 import asyncio
 
 # HTTP Bearer 토큰 스키마
@@ -31,7 +32,7 @@ async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> UserResponse:
-    """현재 인증된 사용자 정보 반환"""
+    """현재 인증된 사용자 정보 반환 (MongoDB 우선, 실패시 메모리)"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -52,7 +53,15 @@ async def get_current_user(
     if username is None:
         raise credentials_exception
     
-    # 사용자 정보 조회 (임시로 fake_users_db 사용)
+    try:
+        # MongoDB에서 사용자 정보 조회 시도
+        user = await UserService.get_user_by_username(username)
+        if user:
+            return UserResponse(**user)
+    except Exception as e:
+        print(f"MongoDB user lookup failed: {e}, trying memory storage")
+    
+    # 메모리 저장소로 fallback
     user = fake_users_db.get(username)
     if user is None:
         raise credentials_exception
