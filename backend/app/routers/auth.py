@@ -3,13 +3,11 @@ from fastapi.responses import JSONResponse
 from app.models.user import UserCreate, UserLogin, UserResponse, Token
 from app.core.security import hash_pw, verify_pw, create_access_token
 from app.dependencies import get_current_user
+from app.storage import fake_users_db
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-
-# 임시 사용자 저장소 (실제로는 MongoDB 사용)
-fake_users_db: Dict[str, Dict[str, Any]] = {}
 
 
 @router.post("/signup", response_model=UserResponse)
@@ -89,7 +87,8 @@ async def login(response: Response, user_credentials: UserLogin):
         httponly=True,
         max_age=24 * 60 * 60,  # 24시간 (초 단위)
         secure=False,  # 개발환경에서는 False, 프로덕션에서는 True
-        samesite="lax"
+        samesite="lax",
+        path="/"  # 모든 경로에서 쿠키 사용 가능
     )
     
     return {
@@ -104,7 +103,7 @@ async def login(response: Response, user_credentials: UserLogin):
 async def logout(response: Response):
     """사용자 로그아웃"""
     # 쿠키 삭제
-    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="access_token", path="/")
     return {"message": "Logout successful"}
 
 

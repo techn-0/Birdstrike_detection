@@ -3,13 +3,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 from app.models.user import UserResponse, TokenData
 from app.core.security import verify_jwt
+from app.storage import fake_users_db
 import asyncio
 
 # HTTP Bearer 토큰 스키마
 security = HTTPBearer(auto_error=False)
-
-# 임시 사용자 저장소 (실제로는 MongoDB 사용)
-fake_users_db = {}
 
 
 def get_token_from_cookie_or_header(

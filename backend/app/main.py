@@ -6,12 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routes import detect, cctv
 from app.routes import ws_route
 from app.routers import auth
+from app.storage import init_test_users
 
 import logging
 logging.basicConfig(level=logging.INFO, 
                     format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 app = FastAPI()
+
+# 테스트 사용자 초기화
+init_test_users()
 
 # CORS 미들웨어 추가
 app.add_middleware(
