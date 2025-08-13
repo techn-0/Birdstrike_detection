@@ -1,6 +1,7 @@
 """
-조류 탐지 시스템 - 간소화된 API 테스트 클라이언트
-현재 프로젝트의 /detect 엔드포인트에 맞게 수정
+조류 탐지 시스템 - CSV 배치 전송 우선 API 테스트 클라이언트
+주요 기능: CSV 형식 배치 탐지 결과 전송
+부차 기능: 개별 탐지 결과 전송 및 다양한 형식 지원
 """
 
 import requests
@@ -12,6 +13,10 @@ import os
 
 # 서버 URL 설정
 SERVER_URL = "http://localhost:8000"
+
+# ========================================
+# 주요 기능: CSV 배치 처리
+# ========================================
 
 def send_detection_batch(detections_list, cctv_id="unknown"):
     """
@@ -128,6 +133,10 @@ def test_batch_detection():
     else:
         print("❌ 배치 테스트 실패")
 
+# ========================================
+# 부차 기능: 개별 탐지 결과 전송
+# ========================================
+
 def send_detection_result(detection_data):
     """
     탐지 결과를 서버로 전송 (Detection 모델 형식)
@@ -216,6 +225,10 @@ def send_detection_result(detection_data):
         print(f"❌ 전송 실패: {e}")
         return False
 
+# ========================================
+# 부차 기능: 샘플 및 시뮬레이션 테스트
+# ========================================
+
 def test_detection_samples():
     """첨부된 CSV 데이터 샘플 테스트"""
     print("🔍 탐지 데이터 샘플 테스트 시작...")
@@ -271,7 +284,11 @@ def test_detection_samples():
     
     print(f"\n📊 샘플 테스트 완료: {success_count}/3 성공")
 
-def simulate_real_model_output():
+# ========================================
+# 부차 기능: 다양한 형식 변환 지원
+# ========================================
+
+def convert_yolo_format(yolo_detection, image_width=640, image_height=480):
     """실제 AI 모델 출력을 시뮬레이션"""
     print("\n🤖 AI 모델 출력 시뮬레이션...")
     
@@ -317,10 +334,18 @@ def simulate_real_model_output():
         send_detection_result(simulation_data)
 
 def load_csv_file(csv_path: str):
-    """CSV 파일을 읽어서 테스트"""
+    """
+    CSV 파일을 읽어서 배치로 전송 (주요 기능)
+    
+    Args:
+        csv_path: CSV 파일 경로
+    
+    Returns:
+        bool: 전송 성공 여부
+    """
     if not os.path.exists(csv_path):
         print(f"❌ CSV 파일을 찾을 수 없습니다: {csv_path}")
-        return
+        return False
     
     print(f"📄 CSV 파일 로드 중: {csv_path}")
     
@@ -331,13 +356,11 @@ def load_csv_file(csv_path: str):
         
         print(f"✅ {len(detections)}개의 탐지 결과를 로드했습니다.")
         
-        # 처음 5개만 테스트
-        test_count = min(5, len(detections))
-        success_count = 0
+        # CSV 데이터를 배치 형식으로 변환
+        batch_detections = []
+        cctv_groups = {}  # CCTV별로 그룹핑
         
-        for i in range(test_count):
-            detection = detections[i]
-            
+        for detection in detections:
             # CSV 데이터를 API 형식으로 변환
             converted_detection = {
                 "x1": float(detection['x1']),
@@ -352,24 +375,34 @@ def load_csv_file(csv_path: str):
             
             # CCTV ID 추론 (이미지명에서)
             if detection['image_name'].startswith("D01_"):
-                converted_detection['cctv_id'] = "camera_01"
+                cctv_id = "camera_01"
             elif detection['image_name'].startswith("D02_"):
-                converted_detection['cctv_id'] = "camera_02"
+                cctv_id = "camera_02"
             else:
-                converted_detection['cctv_id'] = "unknown"
+                cctv_id = "unknown"
             
-            print(f"\n[{i+1}/{test_count}] CSV 행 {i+1} 처리 중...")
-            print(f"  이미지: {detection['image_name']}")
-            print(f"  신뢰도: {float(detection['confidence']):.3f}")
-            print(f"  CCTV: {converted_detection['cctv_id']}")
-            
-            if send_detection_result(converted_detection):
-                success_count += 1
+            # CCTV별로 그룹핑
+            if cctv_id not in cctv_groups:
+                cctv_groups[cctv_id] = []
+            cctv_groups[cctv_id].append(converted_detection)
         
-        print(f"\n📊 CSV 파일 테스트 완료: {success_count}/{test_count} 성공")
+        # CCTV별로 배치 전송
+        total_success = 0
+        total_count = 0
+        
+        for cctv_id, cctv_detections in cctv_groups.items():
+            print(f"\n📹 {cctv_id}: {len(cctv_detections)}개 탐지 결과 배치 전송...")
+            
+            if send_detection_batch(cctv_detections, cctv_id):
+                total_success += len(cctv_detections)
+            total_count += len(cctv_detections)
+        
+        print(f"\n📊 CSV 배치 전송 완료: {total_success}/{total_count} 성공")
+        return total_success == total_count
         
     except Exception as e:
         print(f"❌ CSV 파일 처리 실패: {e}")
+        return False
 
 def convert_yolo_format(yolo_detection, image_width=640, image_height=480):
     """
@@ -455,6 +488,55 @@ def test_various_formats():
         print(f"  COCO {i+1}: {coco_det} -> 신뢰도 {converted['confidence']}")
         send_detection_result(converted)
 
+def simulate_real_model_output():
+    """실제 AI 모델 출력을 시뮬레이션 (부차 기능)"""
+    print("\n🤖 AI 모델 출력 시뮬레이션...")
+    
+    # 실제 패턴과 유사한 시뮬레이션 데이터
+    for i in range(5):
+        # 랜덤한 탐지 결과 생성
+        image_num = random.randint(1000, 9999)
+        crop_num = random.randint(0, 10)
+        
+        # 이미지명 생성 (실제 패턴과 유사)
+        camera_id = random.choice(["D01", "D02"])
+        image_name = f"{camera_id}_20210{random.randint(601,801):03d}{random.randint(10,23):02d}{random.randint(10,59):02d}{random.randint(10,59):02d}_{image_num:07d}_crop_{crop_num:03d}.png"
+        
+        # 바운딩 박스 생성 (실제 범위와 유사)
+        x1 = random.uniform(50, 500)
+        y1 = random.uniform(50, 400)
+        width = random.uniform(5, 50)
+        height = random.uniform(5, 40)
+        x2 = x1 + width
+        y2 = y1 + height
+        
+        # 신뢰도 (실제 범위와 유사)
+        confidence = random.uniform(0.25, 0.95)
+        
+        # CCTV ID 추론
+        cctv_id = "camera_01" if camera_id == "D01" else "camera_02"
+        
+        simulation_data = {
+            "image_name": image_name,
+            "object_id": 0,
+            "class_name": "bird",
+            "x1": round(x1, 2),
+            "y1": round(y1, 2),
+            "x2": round(x2, 2),
+            "y2": round(y2, 2),
+            "confidence": round(confidence, 6),
+            "cctv_id": cctv_id
+        }
+        
+        print(f"\n🔍 시뮬레이션 #{i+1}: 신뢰도 {confidence:.3f}")
+        print(f"   이미지: {image_name}")
+        print(f"   CCTV: {cctv_id}")
+        send_detection_result(simulation_data)
+
+# ========================================
+# 유틸리티 함수
+# ========================================
+
 def check_server():
     """서버 연결 확인"""
     try:
@@ -472,18 +554,31 @@ def check_server():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🚁 조류 탐지 시스템 - 간소화된 API 테스트")
+    print("🚁 조류 탐지 시스템 - CSV 배치 전송 우선 테스트 클라이언트")
     print("=" * 60)
     
     # 서버 연결 확인
     if not check_server():
         exit(1)
     
-    # 샘플 테스트 실행
-    test_detection_samples()
+    # 🎯 주요 기능: CSV 파일 배치 전송 (최우선)
+    csv_path = "detection_results.csv"
+    if os.path.exists(csv_path):
+        print(f"\n📁 로컬 CSV 파일 발견: {csv_path}")
+        print("🎯 주요 기능: CSV 배치 전송 시작...")
+        load_csv_file(csv_path)
+    else:
+        print(f"\n⚠️ CSV 파일이 없습니다: {csv_path}")
+        print("🎯 CSV 배치 테스트를 위해 샘플 데이터로 진행...")
+        test_batch_detection()
     
-    # 배치 테스트
-    test_batch_detection()
+    # ⚙️ 부차 기능들 (선택사항)
+    print("\n" + "="*50)
+    print("⚙️ 부차 기능 테스트 (개별/다양한 형식)")
+    print("="*50)
+    
+    # 개별 샘플 테스트
+    test_detection_samples()
     
     # 다양한 형식 테스트
     test_various_formats()
@@ -491,26 +586,29 @@ if __name__ == "__main__":
     # 시뮬레이션 테스트
     simulate_real_model_output()
     
-    # CSV 파일이 있다면 로드해서 테스트
-    csv_path = "detection_results.csv"
-    if os.path.exists(csv_path):
-        print(f"\n📁 로컬 CSV 파일 발견: {csv_path}")
-        load_csv_file(csv_path)
-    
     print("\n🎉 모든 테스트 완료!")
-    print("\n💡 사용법:")
-    print("   1. 샘플 테스트: test_detection_samples()")
-    print("   2. 배치 테스트: test_batch_detection()")
-    print("   3. 형식 변환 테스트: test_various_formats()")
-    print("   4. CSV 파일 로드: load_csv_file('your_file.csv')")
-    print("   5. 개별 전송: send_detection_result(detection_dict)")
-    print("   6. 배치 전송: send_detection_batch(detections_list, cctv_id)")
+    print("\n💡 주요 기능 (CSV 배치 처리):")
+    print("   1. CSV 파일 로드: load_csv_file('your_file.csv')")
+    print("   2. 배치 전송: send_detection_batch(detections_list, cctv_id)")
+    print("   3. 배치 테스트: test_batch_detection()")
+    
+    print("\n🔧 부차 기능 (개별/다양한 형식):")
+    print("   4. 개별 전송: send_detection_result(detection_dict)")
+    print("   5. 샘플 테스트: test_detection_samples()")
+    print("   6. 형식 변환 테스트: test_various_formats()")
     print("   7. 시뮬레이션: simulate_real_model_output()")
     print("   8. YOLO 변환: convert_yolo_format(yolo_detection)")
     print("   9. COCO 변환: convert_coco_format(coco_detection)")
     
-    print("\n📋 API 형식:")
-    print("   단일 탐지: POST /detect")
+    print("\n📋 API 엔드포인트:")
+    print("   🎯 주요: POST /detect/batch (CSV 배치 전송)")
+    print("   {")
+    print("     'detections': [탐지결과배열],")
+    print("     'cctv_id': str,")
+    print("     'captured_at': str (선택)")
+    print("   }")
+    print("")
+    print("   ⚙️ 부차: POST /detect (개별 탐지)")
     print("   {")
     print("     'x1': float, 'y1': float, 'x2': float, 'y2': float,")
     print("     'confidence': float,")
@@ -519,15 +617,8 @@ if __name__ == "__main__":
     print("     'class_name': str (기본값: 'bird')")
     print("   }")
     print("")
-    print("   배치 탐지: POST /detect/batch")
-    print("   {")
-    print("     'detections': [탐지결과배열],")
-    print("     'cctv_id': str,")
-    print("     'captured_at': str (선택)")
-    print("   }")
-    print("")
-    print("💡 지원하는 입력 형식:")
-    print("   - 직접 API 형식 (x1, y1, x2, y2)")
-    print("   - CSV 형식 (detection_results.csv)")
-    print("   - YOLO 형식 (정규화된 center_x, center_y, width, height)")
-    print("   - COCO 형식 (x, y, width, height)")
+    print("💡 지원하는 입력 형식 (우선순위 순):")
+    print("   1. 🎯 CSV 형식 (detection_results.csv) - 주요 기능")
+    print("   2. ⚙️ 직접 API 형식 (x1, y1, x2, y2) - 부차 기능")
+    print("   3. ⚙️ YOLO 형식 (정규화된 center_x, center_y, width, height)")
+    print("   4. ⚙️ COCO 형식 (x, y, width, height)")
