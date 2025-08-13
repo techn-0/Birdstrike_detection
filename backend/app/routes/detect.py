@@ -1,6 +1,6 @@
 # detect.py - 간소화된 탐지 API
 from fastapi import APIRouter, HTTPException
-from ..models import Detection, DetectionBatch, Result
+from ..models.cctv import Detection, DetectionBatch, Result
 from ..services.detection_service import DetectionService
 import logging
 
@@ -21,12 +21,9 @@ async def detect(detection: Detection):
 async def detect_batch(batch: DetectionBatch):
     """여러 탐지 결과 일괄 처리"""
     try:
-        for detection in batch.detections:
-            # batch 정보로 보완
-            if not detection.cctv_id:
-                detection.cctv_id = batch.cctv_id
-            if not detection.captured_at:
-                detection.captured_at = batch.captured_at
+        for csv_detection in batch.detections:
+            # DetectionCSV를 Detection으로 변환
+            detection = DetectionService.csv_to_detection(csv_detection, batch.cctv_id)
             
             await DetectionService.process_detection(detection)
         

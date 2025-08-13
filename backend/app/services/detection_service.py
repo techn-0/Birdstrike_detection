@@ -2,39 +2,62 @@
 from datetime import datetime
 from ..db import db
 from ..ws_manager import manager
-from ..models import Detection
+from ..models.cctv import Detection, DetectionCSV
 import logging
 
 logger = logging.getLogger(__name__)
 
 class DetectionService:
     @staticmethod
-    def normalize_detection(detection: Detection) -> dict:
-        """탐지 데이터를 DB 저장 형식으로 정규화"""
-        # cctv_id 추론
-        if not detection.cctv_id and detection.image_name:
-            if detection.image_name.startswith("D01_"):
-                detection.cctv_id = "camera_01"
-            elif detection.image_name.startswith("D02_"):
-                detection.cctv_id = "camera_02"
-            else:
-                detection.cctv_id = "unknown"
+    def csv_to_detection(csv_detection: DetectionCSV, cctv_id: str = None) -> Detection:
+        """DetectionCSV를 Detection 모델로 변환"""
+        # bbox 배열 형식 [x1, y1, x2, y2]
+        bbox = [csv_detection.x1, csv_detection.y1, csv_detection.x2, csv_detection.y2]
+        
+        # pos 배열 형식 [center_x, center_y]
+        pos = [csv_detection.center_x, csv_detection.center_y]
+        
+        # risk 계산 (confidence 기반)
+        if csv_detection.confidence >= 0.8:
+            risk = "red"
+        elif csv_detection.confidence >= 0.6:
+            risk = "orange"
+        elif csv_detection.confidence >= 0.4:
+            risk = "yellow"
+        else:
+            risk = "green"
+        
+        # frame_url 생성
+        frame_url = f"/frames/{csv_detection.image_name}" if csv_detection.image_name else None
+        
+        # CCTV ID 결정
+        final_cctv_id = csv_detection.cctv_id or cctv_id or "unknown"
         
         # 시간 설정
-        if not detection.captured_at:
-            detection.captured_at = datetime.now()
+        captured_at = csv_detection.captured_at or datetime.now()
         
+        return Detection(
+            cctv_id=final_cctv_id,
+            bbox=bbox,
+            pos=pos,
+            risk=risk,
+            captured_at=captured_at,
+            frame_url=frame_url,
+            bird_count=1
+        )
+    
+    @staticmethod
+    def normalize_detection(detection: Detection) -> dict:
+        """탐지 데이터를 DB 저장 형식으로 정규화"""
         return {
             "cctv_id": detection.cctv_id,
-            "bbox": [detection.x1, detection.y1, detection.x2, detection.y2],
-            "pos": [detection.center_x, detection.center_y],
+            "bbox": detection.bbox,
+            "pos": detection.pos,
             "risk": detection.risk,
-            "confidence": detection.confidence,
             "captured_at": detection.captured_at,
-            "frame_url": f"/frames/{detection.image_name}" if detection.image_name else None,
-            "image_name": detection.image_name,
-            "object_id": detection.object_id,
-            "class_name": detection.class_name
+            "frame_url": detection.frame_url,
+            "fov": detection.fov.dict() if detection.fov else None,
+            "bird_count": detection.bird_count
         }
     
     @staticmethod
