@@ -1,53 +1,60 @@
-# 팀원의 모델에서 사용할 예제 코드
+# 간소화된 탐지 클라이언트 예제
 import requests
-import base64
 from datetime import datetime
-from typing import List
 
 class BirdDetectionClient:
     def __init__(self, server_url: str = "http://localhost:8000"):
         self.server_url = server_url
     
     def send_detection(self, 
-                      cctv_id: str,
-                      bbox: List[float],  # [x1, y1, x2, y2] - CSV 형식
+                      x1: float, y1: float, x2: float, y2: float,
                       confidence: float,
-                      image_path: str = None,
-                      image_data: bytes = None):
+                      cctv_id: str = None,
+                      image_name: str = None):
         """
-        탐지 결과를 서버로 전송
+        탐지 결과를 서버로 전송 (간소화된 형식)
         
         Args:
-            cctv_id: 카메라 ID
-            bbox: 바운딩 박스 [x1, y1, x2, y2] - CSV 형식
+            x1, y1, x2, y2: 바운딩 박스 좌표
             confidence: 신뢰도 (0.0 ~ 1.0)
-            image_path: 이미지 파일 경로 (옵션)
-            image_data: 이미지 바이트 데이터 (옵션)
+            cctv_id: 카메라 ID (옵션)
+            image_name: 이미지 파일명 (옵션)
         """
-        
-        # 이미지를 base64로 인코딩
-        encoded_image = None
-        if image_path:
-            with open(image_path, "rb") as f:
-                encoded_image = base64.b64encode(f.read()).decode('utf-8')
-        elif image_data:
-            encoded_image = base64.b64encode(image_data).decode('utf-8')
-        
-        # 탐지 결과 데이터
         detection_data = {
-            "cctv_id": cctv_id,
-            "bbox": bbox,
+            "x1": x1,
+            "y1": y1,
+            "x2": x2,
+            "y2": y2,
             "confidence": confidence,
+            "cctv_id": cctv_id,
             "captured_at": datetime.now().isoformat(),
-            "image_data": encoded_image,
-            "bird_count": 1
+            "image_name": image_name
         }
         
         try:
             response = requests.post(
-                f"{self.server_url}/detect/result",
+                f"{self.server_url}/detect",
                 json=detection_data,
                 timeout=10
+            )
+            return response.json()
+        except Exception as e:
+            print(f"전송 실패: {e}")
+            return {"ok": False, "error": str(e)}
+
+# 사용 예제
+if __name__ == "__main__":
+    client = BirdDetectionClient()
+    
+    # 테스트 탐지 결과 전송
+    result = client.send_detection(
+        x1=100, y1=100, x2=200, y2=200,
+        confidence=0.85,
+        cctv_id="camera_01",
+        image_name="test_image.jpg"
+    )
+    
+    print(f"전송 결과: {result}")
             )
             
             if response.status_code == 200:
