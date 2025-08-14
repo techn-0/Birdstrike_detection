@@ -1,94 +1,97 @@
 import { useState } from "react";
 import { CctvMeta, Detection } from "../types";
+import { useAuth } from "../contexts/AuthContext";
 
 interface Props {
   cctvs: CctvMeta[];
   onAddOrUpdate: (meta: CctvMeta) => void;
   onDelete: (id: string) => void;
   detections: Detection[];
-  onCctvNameClick?: (id: string) => void; // ← 추가
+  onCctvNameClick?: (id: string) => void;
 }
 
 export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, onCctvNameClick }: Props) {
-  // 위치 입력은 문자열로 관리
+  const { user, isAdmin } = useAuth();
   const [form, setForm] = useState<Partial<CctvMeta> & { posInput?: string }>({});
 
-  // 수정 모드 판별: form.id가 cctvs에 이미 존재하면 수정
   const isEdit = form.id && cctvs.some(c => c.id === form.id);
 
   return (
     <div
       style={{
         position: "fixed",
-        top: 0,
-        right: 0,
+        top: "60px", // 상단바 높이만큼 아래로
+        right: "0",
         width: "340px",
-        height: "100vh",
-        background: "rgba(255,255,255,0.85)", // 반투명 흰색
-        boxShadow: "-2px 0 12px #0003",
+        height: "calc(100vh - 60px)", // 전체 높이에서 상단바 높이 제외
+        background: "rgba(255,255,255,0.95)",
+        boxShadow: "-2px 0 12px rgba(0,0,0,0.1)",
         padding: "24px 16px",
         overflowY: "auto",
-        zIndex: 2000, // 지도보다 위에 오도록 충분히 큰 값
-        borderLeft: "1px solid #eee",
+        borderLeft: "1px solid #e5e5e5",
         display: "flex",
         flexDirection: "column",
-        backdropFilter: "blur(4px)", // 선택사항: 배경 흐림 효과
+        backdropFilter: "blur(4px)",
+        zIndex: 999, // 지도 위에 표시되도록
       }}
     >
-      <h2 className="font-bold mb-2">CCTV 목록</h2>
-      <ul>
+      <h2 className="font-bold mb-4 text-lg text-blue-700">CCTV 목록</h2>
+      <ul className="mb-6">
         {cctvs.map(c => (
-          <li key={c.id} className="mb-2 border-b pb-1">
+          <li key={c.id} className="mb-3 pb-3 border-b border-gray-200">
             <div>
               <b
                 style={{
                   cursor: "pointer",
-                  color: c.color || "#007bff" // 마커 색상과 일치하게
+                  color: c.color || "#007bff"
                 }}
                 onClick={() => onCctvNameClick && onCctvNameClick(c.id)}
               >
                 이름: {c.name}
               </b>
               <br />
-              <b>ID:</b> {c.id}
+              <span className="text-sm text-gray-600"><b>ID:</b> {c.id}</span>
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 mt-1">
               위치: {c.pos.join(", ")}<br />
               방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}
             </div>
-            <div>
-              {/* <b>탐지 내역:</b>
-              <ul>
-                {detections.filter(d => d.cctv_id === c.id).map((d, i) => (
-                  <li key={i}>
-                    {d.captured_at} 위험도: {d.risk}
-                    <br />
-                    <b>탐지된 새 수:</b> {d.bird_count}
-                    {d.frame_url && (
-                      <div>
-                        <img src={`${process.env.REACT_APP_API_HTTP}${d.frame_url}`} alt="frame" width={120} />
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul> */}
+            <div className="mt-2">
+              {isAdmin() && (
+                <>
+                  <button 
+                    className="text-blue-500 hover:underline mr-3" 
+                    onClick={() => setForm({ ...c, posInput: c.pos.join(",") })}
+                  >
+                    수정
+                  </button>
+                  <button 
+                    className="text-red-500 hover:underline" 
+                    onClick={() => onDelete(c.id)}
+                  >
+                    삭제
+                  </button>
+                </>
+              )}
+              {!user && (
+                <span className="text-gray-400 text-sm">로그인하면 관리 기능을 사용할 수 있습니다</span>
+              )}
+              {user && !isAdmin() && (
+                <span className="text-gray-400 text-sm">관리자 권한이 필요합니다</span>
+              )}
             </div>
-            <button className="text-blue-500 mr-2" onClick={() => setForm({ ...c, posInput: c.pos.join(",") })}>
-              수정
-            </button>
-            <button className="text-red-500" onClick={() => onDelete(c.id)}>
-              삭제
-            </button>
           </li>
         ))}
       </ul>
-      <h3 className="font-bold mt-4">CCTV 추가/수정</h3>
-      <form
-        className="flex flex-col gap-1"
-        onSubmit={e => {
-          e.preventDefault();
-          // 위치 변환
-          const posArr = form.posInput?.split(",").map(Number) as [number, number] | undefined;
+      
+      {isAdmin() ? (
+        <>
+          <h3 className="font-bold mt-4 mb-3 text-blue-700">CCTV 추가/수정</h3>
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={e => {
+              e.preventDefault();
+              const posArr = form.posInput?.split(",").map(Number) as [number, number] | undefined;
           if (
             form.id &&
             form.name &&
@@ -119,18 +122,21 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
           onChange={e => setForm(f => ({ ...f, id: e.target.value }))}
           required
           readOnly={!!isEdit}
+          className="border rounded px-2 py-1"
         />
         <input
           placeholder="이름"
           value={form.name || ""}
           onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
           required
+          className="border rounded px-2 py-1"
         />
         <input
           placeholder="위치 (u,v, 예: 0.5,0.5)"
           value={form.posInput ?? ""}
           onChange={e => setForm(f => ({ ...f, posInput: e.target.value }))}
           required
+          className="border rounded px-2 py-1"
         />
         <input
           placeholder="방향"
@@ -138,6 +144,7 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
           value={form.direction ?? ""}
           onChange={e => setForm(f => ({ ...f, direction: Number(e.target.value) }))}
           required
+          className="border rounded px-2 py-1"
         />
         <input
           placeholder="시야각"
@@ -145,6 +152,7 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
           value={form.angle ?? ""}
           onChange={e => setForm(f => ({ ...f, angle: Number(e.target.value) }))}
           required
+          className="border rounded px-2 py-1"
         />
         <input
           placeholder="길이"
@@ -152,18 +160,35 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
           value={form.length ?? ""}
           onChange={e => setForm(f => ({ ...f, length: Number(e.target.value) }))}
           required
+          className="border rounded px-2 py-1"
         />
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
           <input
             type="color"
             value={form.color || "#007bff"}
             onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
             style={{ width: 40, height: 30 }}
           />
-          <span>마커 색상</span>
+          <span className="text-sm">마커 색상</span>
         </div>
-        <button type="submit" className="bg-blue-500 text-white py-1 mt-2">저장</button>
+        <button 
+          type="submit" 
+          className="bg-blue-500 hover:bg-blue-600 text-white py-2 mt-2 rounded transition"
+        >
+          저장
+        </button>
       </form>
+        </>
+      ) : (
+        <div className="mt-4 p-4 bg-gray-100 rounded-lg text-center">
+          <h3 className="font-bold mb-2 text-gray-600">CCTV 관리</h3>
+          {!user ? (
+            <p className="text-sm text-gray-500">로그인하면 CCTV를 관리할 수 있습니다</p>
+          ) : (
+            <p className="text-sm text-gray-500">CCTV 추가/수정/삭제는 관리자만 가능합니다</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
