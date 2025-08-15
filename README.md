@@ -1,177 +1,492 @@
-# ✈️ BirdWatch 프로토타입 개발 가이드
+# 🚁 BirdWatch - 공항 조류 탐지 시스템
 
-## 1. 개요
+## 📋 프로젝트 개요
 
-공항 CCTV 영상에서 YOLO 모델이 탐지한 조류 위치를 실시간으로 웹 지도(React + Leaflet)에 시각화합니다. 학습/추론 모델은 외부에서 HTTP POST로 탐지 결과를 전송하고, 백엔드(FastAPI + MongoDB)가 DB 저장 후 WebSocket 으로 프런트에 푸시합니다.
+**BirdWatch**는 공항 안전을 위한 실시간 조류 탐지 및 모니터링 시스템입니다. YOLO 기반 조류 탐지 모델의 결과를 받아 웹 인터페이스에서 실시간으로 시각화하고, 위험도에 따른 경보 시스템을 제공합니다.
 
----
+### 🎯 주요 기능
 
-## 2. 디렉터리 구조
+- **실시간 조류 탐지**: YOLO 모델 결과를 즉시 수신 및 처리
+- **웹 기반 모니터링**: React + Leaflet 기반 지도 인터페이스
+- **위험도 분류**: 신뢰도 기반 4단계 위험도 자동 분류
+- **WebSocket 통신**: 실시간 탐지 결과 푸시
+- **사용자 인증**: JWT 기반 로그인 시스템
+- **배치 처리**: 대량 탐지 결과 일괄 처리 지원
+- **데이터 저장**: MongoDB 기반 탐지 이력 관리
+
+### 🏗️ 시스템 아키텍처
 
 ```
-birdwatch/
-├─ backend/
-│  ├─ app/
-│  │  ├─ __init__.py
-│  │  ├─ main.py              # FastAPI 진입점
-│  │  ├─ ws_manager.py        # WebSocket 싱글턴 (ConnectionManager)
-│  │  ├─ models.py            # Pydantic Detection 모델
-│  │  ├─ db.py                # Motor(MongoDB) 커넥션 헬퍼
-│  │  ├─ static/frames/       # 프레임 이미지 서빙 폴더
-│  │  └─ routes/
-│  │     ├─ detect.py         # /detect/result POST API
-│  │     ├─ cctv.py           # (예비) CCTV 메타 API
-│  │     └─ ws_route.py       # /ws WebSocket 엔드포인트
-│  ├─ requirements.txt
-│  └─ Dockerfile
-├─ frontend/
-│  ├─ src/
-│  │  ├─ components/MapView.tsx
-│  │  ├─ hooks/useWebSocket.ts
-│  │  └─ index.tsx
-│  ├─ public/airport_bg.png
-│  ├─ .env                    # REACT_APP_API_WS / HTTP
-│  └─
-├─ docker-compose.yml
-└─ README.md
-
+[탐지 모델] --HTTP POST--> [FastAPI 백엔드] --WebSocket--> [React 프론트엔드]
+                              |
+                              v
+                         [MongoDB 데이터베이스]
 ```
 
 ---
 
-## 3. 로컬 실행 (Windows + Docker Desktop)
+## 🗂️ 프로젝트 구조
 
 ```
-# 1) 이미지 빌드 및 컨테이너 기동
-> docker compose up --build
-
-# 2) 백엔드 Uvicorn : http://localhost:8000
-#    MongoDB        : mongodb://localhost:27017
-#    프런트 Dev 서버: http://localhost:3000  (다른 터미널에서)
-> cd frontend
-> npm install
-> npm start
-
-```
-
-### 컨테이너 상태 확인
-
-```
-> docker compose ps      # api, mongo Both Up
-> docker compose logs -f api  # 실시간 로그
-
-```
-
----
-
-## 4. 테스트 시나리오
-
-### 4‑1. WebSocket 수동 접속
-
-1. 브라우저 F12 Console 열기
-
-```
-window.ws = new WebSocket("ws://localhost:8000/ws");
-ws.onopen  = () => console.log("WS OPEN");
-ws.onmessage = e => console.log("WS MSG", JSON.parse(e.data));
-
-```
-
-→ `WS OPEN` 로그가 뜨면 연결 OK
-
-### 4‑2. Dummy Detection POST
-
-```
-curl -X POST http://localhost:8000/detect/result ^
-     -H "Content-Type: application/json" ^
-     -d "{\"cctv_id\":\"T1-01\",\"bbox\":[0.3,0.2,0.005,0.005],\"pos\":[0.30,0.20],\"risk\":\"red\",\"captured_at\":\"2025-05-21T01:10:00Z\",\"frame_url\":\"/frames/sample.jpg\"}"
-
-```
-
-```
-curl -X POST http://localhost:8000/detect/result -H "Content-Type: application/json" ^
-     -d "{\"cctv_id\":\"T1-02\",\"bbox\":[0.55,0.35,0.006,0.006],\"pos\":[0.55,0.35],\"risk\":\"orange\",\"captured_at\":\"2025-05-21T02:00:05Z\",\"frame_url\":\"/frames/sample.jpg\"}"
-
-```
-
-정상 응답 `{"ok":true}` → 브라우저 Console `WS MSG …` → 지도에 빨간 마커 표시.
-
----
-
-## 5. API 스펙
-
-| 메서드 | 경로 | 바디/쿼리 | 설명 |
-| --- | --- | --- | --- |
-| GET | `/ping` | – | 사용 중 헬스체크 200 OK |
-| POST | `/detect/result` | `Detection` JSON | 탐지 결과 수신 & DB 저장 & WS 브로드캐스트 |
-| WS | `/ws` | – | 서버→클라이언트 실시간 push (JSON) |
-
-### Detection 스키마 (Pydantic)
-
-```
-{
-  "cctv_id": "T1‑01",
-  "bbox": [x, y, w, h],       // 0‑1 정규화
-  "pos" : [u, v],            // 0‑1 지도 비율좌표
-  "risk": "red|orange|yellow|green",
-  "captured_at": "2025‑05‑21T01:10:00Z",
-  "frame_url": "/frames/sample.jpg"
-}
-
+Birdstrike_detection/
+├── backend/                     # FastAPI 백엔드 서버
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py             # FastAPI 애플리케이션 진입점
+│   │   ├── models.py           # Pydantic 데이터 모델
+│   │   ├── db.py               # MongoDB 연결 관리
+│   │   ├── storage.py          # 데이터 저장소 초기화
+│   │   ├── ws_manager.py       # WebSocket 연결 관리
+│   │   ├── dependencies.py     # 의존성 주입
+│   │   ├── core/
+│   │   │   └── security.py     # JWT 인증 로직
+│   │   ├── models/
+│   │   │   ├── user.py         # 사용자 모델
+│   │   │   └── cctv.py         # CCTV 메타데이터 모델
+│   │   ├── routes/
+│   │   │   ├── detect.py       # 탐지 관련 API 엔드포인트
+│   │   │   ├── cctv.py         # CCTV 관리 API
+│   │   │   └── ws_route.py     # WebSocket 엔드포인트
+│   │   ├── routers/
+│   │   │   └── auth.py         # 인증 관련 API
+│   │   ├── services/
+│   │   │   ├── detection_service.py  # 탐지 서비스 로직
+│   │   │   ├── user_service.py       # 사용자 서비스
+│   │   │   └── file_storage.py       # 파일 저장 서비스
+│   │   └── static/
+│   │       └── frames/         # 탐지 이미지 저장소
+│   ├── requirements.txt        # Python 의존성
+│   └── Dockerfile             # 백엔드 Docker 설정
+├── frontend/                   # React 프론트엔드
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── MapView.tsx     # 지도 컴포넌트
+│   │   │   ├── Header.tsx      # 헤더 컴포넌트
+│   │   │   ├── SidePanel.tsx   # 사이드 패널
+│   │   │   ├── LoginModal.tsx  # 로그인 모달
+│   │   │   └── DetectionModal.tsx # 탐지 상세 모달
+│   │   ├── contexts/
+│   │   │   └── AuthContext.tsx # 인증 컨텍스트
+│   │   ├── hooks/
+│   │   │   └── useWebSocket.ts # WebSocket 훅
+│   │   ├── api/                # API 통신 모듈
+│   │   ├── types/              # TypeScript 타입 정의
+│   │   ├── App.tsx             # 메인 앱 컴포넌트
+│   │   ├── index.tsx          # React 엔트리포인트
+│   │   └── index.css          # 글로벌 스타일
+│   ├── public/
+│   │   ├── airport_bg.png     # 공항 배경 이미지
+│   │   └── index.html
+│   └── package.json           # Node.js 의존성
+├── test/                      # 테스트 파일
+│   ├── storage_api_test.py    # API 테스트 스크립트
+│   ├── batch_test.py          # 배치 처리 테스트
+│   ├── detection_test.py      # 탐지 기능 테스트
+│   ├── csv_test_client.py     # CSV 데이터 테스트
+│   ├── detection_results.csv  # 테스트 데이터
+│   ├── detection_image/       # 테스트 이미지
+│   └── API_INTEGRATION_GUIDE.md # API 통합 가이드
+├── _data/
+│   └── mongo/                 # MongoDB 데이터 영구 저장소
+├── birdwatch-auth/            # 독립 인증 서비스 (선택사항)
+├── docker-compose.yml         # Docker Compose 설정
+├── cleanup_files.bat          # Windows 정리 스크립트
+├── cleanup_files.sh           # Linux/Mac 정리 스크립트
+└── README.md                  # 이 파일
 ```
 
 ---
 
-## 6. 프런트 구성 요약
+## 🚀 빠른 시작
 
-- **MapView.tsx** : ImageOverlay(airport_bg.png) + Marker + Popup
-- **useWebSocket.ts** : `REACT_APP_API_WS` 로 연결, `onmessage` → `setDets`
-- **CSS** (`index.css`)
+### 1. 환경 요구사항
 
-```css
-.risk-red    {background:#ff4040;width:24px;height:24px;border-radius:50%;}
-.risk-orange {background:#ffb340;width:24px;height:24px;border-radius:50%;}
-.risk-yellow {background:#ffd740;width:24px;height:24px;border-radius:50%;}
-.risk-green  {background:#40c040;width:24px;height:24px;border-radius:50%;}
+- **Docker & Docker Compose**: 컨테이너 실행
+- **Node.js 16+**: 프론트엔드 개발
+- **Python 3.8+**: 백엔드 개발
+- **MongoDB**: 데이터베이스 (Docker로 자동 설치)
 
+### 2. 시스템 실행
+
+#### 방법 1: Docker Compose 사용 (권장)
+
+```bash
+# 1. 리포지토리 클론
+git clone <repository-url>
+cd Birdstrike_detection
+
+# 2. Docker Compose로 백엔드 + MongoDB 실행
+docker-compose up --build
+
+# 3. 프론트엔드 개발 서버 실행 (새 터미널)
+cd frontend
+npm install
+npm start
+```
+
+#### 방법 2: 개별 실행
+
+```bash
+# 1. MongoDB 실행
+docker run -d -p 27017:27017 --name mongo mongo:6
+
+# 2. 백엔드 실행
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# 3. 프론트엔드 실행
+cd frontend
+npm install
+npm start
+```
+
+### 3. 접속 확인
+
+- **백엔드 API**: http://localhost:8000
+- **API 문서**: http://localhost:8000/docs
+- **프론트엔드**: http://localhost:3000
+- **MongoDB**: mongodb://localhost:27017 (또는 27018 if Docker)
+
+---
+
+## 🔧 API 사용법
+
+### 📊 주요 엔드포인트
+
+| 메서드 | 경로 | 설명 | 권한 |
+|--------|------|------|------|
+| `GET` | `/ping` | 헬스체크 | 🔓 공개 |
+| `POST` | `/detect/result` | 개별 탐지 결과 저장 | 🔓 공개 |
+| `POST` | `/detect/batch` | 배치 탐지 결과 저장 | 🔓 공개 |
+| `GET` | `/detect/history/{cctv_id}` | 탐지 내역 조회 | 🔓 공개 |
+| `POST` | `/api/register` | 사용자 회원가입 | 🔓 공개 |
+| `POST` | `/api/login` | 사용자 로그인 | 🔓 공개 |
+| `GET` | `/api/me` | 사용자 정보 조회 | 🔒 인증 필요 |
+| `WS` | `/ws` | 실시간 탐지 결과 스트림 | 🔓 공개 |
+
+### 📝 탐지 결과 전송 예시
+
+#### 개별 탐지 결과 전송
+```bash
+curl -X POST http://localhost:8000/detect/result \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cctv_id": "airport_cam_01",
+    "bbox": [0.3, 0.2, 0.1, 0.1],
+    "pos": [0.35, 0.25],
+    "risk": "red",
+    "captured_at": "2025-08-15T12:34:56Z",
+    "frame_url": "/frames/sample.jpg",
+    "bird_count": 1
+  }'
+```
+
+#### 배치 탐지 결과 전송
+```bash
+curl -X POST http://localhost:8000/detect/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "detections": [
+      {
+        "image_index": 1,
+        "image_name": "frame_001.jpg",
+        "x1": 100, "y1": 150, "x2": 200, "y2": 250,
+        "confidence": 0.85,
+        "class_name": "bird",
+        "width": 100, "height": 100,
+        "center_x": 150, "center_y": 200
+      }
+    ],
+    "cctv_id": "airport_cam_01",
+    "captured_at": "2025-08-15T12:34:56Z"
+  }'
+```
+
+### 🎨 위험도 분류 시스템
+
+탐지 신뢰도에 따른 자동 위험도 분류:
+
+| 위험도 | 색상 | 신뢰도 범위 | 의미 |
+|--------|------|-------------|------|
+| 🔴 **red** | 빨강 | 0.8 이상 | 즉시 경보 필요 |
+| 🟠 **orange** | 주황 | 0.6 - 0.8 | 주의 필요 |
+| 🟡 **yellow** | 노랑 | 0.4 - 0.6 | 모니터링 대상 |
+| 🟢 **green** | 초록 | 0.4 미만 | 참고용 |
+
+---
+
+## 🧪 테스트
+
+### 1. API 테스트 실행
+
+```bash
+cd test
+python storage_api_test.py
+```
+
+이 스크립트는 다음을 테스트합니다:
+- ✅ 서버 연결 상태
+- 🔍 개별 탐지 결과 저장
+- 📦 배치 탐지 결과 저장
+- 📊 탐지 내역 조회
+- 🔄 순차 전송 처리
+
+### 2. WebSocket 연결 테스트
+
+브라우저 개발자 도구에서:
+
+```javascript
+// WebSocket 연결
+const ws = new WebSocket("ws://localhost:8000/ws");
+
+ws.onopen = () => console.log("✅ WebSocket 연결됨");
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log("📡 실시간 탐지:", data);
+};
+```
+
+### 3. 테스트 데이터
+
+`test/detection_results.csv` 파일에 샘플 탐지 데이터가 포함되어 있습니다. 이를 사용하여 배치 처리와 개별 전송을 테스트할 수 있습니다.
+
+---
+
+## 🔐 인증 시스템
+
+### JWT 기반 인증
+
+1. **회원가입**: `POST /api/register`
+   ```json
+   {
+     "username": "testuser",
+     "email": "test@example.com",
+     "password": "password123"
+   }
+   ```
+
+2. **로그인**: `POST /api/login`
+   ```json
+   {
+     "username": "testuser",
+     "password": "password123"
+   }
+   ```
+
+3. **토큰 사용**: 응답받은 `access_token`을 Authorization 헤더에 포함
+   ```
+   Authorization: Bearer <access_token>
+   ```
+
+---
+
+## 🐳 Docker 설정
+
+### docker-compose.yml 구성
+
+```yaml
+services:
+  mongo:
+    image: mongo:6
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./_data/mongo:/data/db
+
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    volumes:
+      - ./backend:/code
+    depends_on:
+      - mongo
+```
+
+### 유용한 Docker 명령어
+
+```bash
+# 컨테이너 상태 확인
+docker-compose ps
+
+# 로그 실시간 확인
+docker-compose logs -f api
+
+# 컨테이너 재시작
+docker-compose restart api
+
+# 데이터베이스 초기화
+docker-compose down
+sudo rm -rf _data/mongo/*
+docker-compose up
 ```
 
 ---
 
-## 7. 문제 해결 팁
+## 🔧 개발 가이드
 
-| 증상 | 원인·대처 |
-| --- | --- |
-| WebSocket 연결은 되는데 broadcast len=0 | `/ws` 핸들러가 다른 모듈과 중복 → `ws_route.py` 하나만 남기기 |
-| 500 TypeError: datetime not JSON serializable | `jsonable_encoder` 로 변환 후 send_json |
-| 마커 너무 작음 or 안 보임 | CSS `.risk-…` 크기 확대, pos 곱셈(세로·가로) 값 확인 |
+### 백엔드 개발
+
+```bash
+cd backend
+
+# 가상환경 생성 (선택사항)
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 의존성 설치
+pip install -r requirements.txt
+
+# 개발 서버 실행
+uvicorn app.main:app --reload --port 8000
+```
+
+### 프론트엔드 개발
+
+```bash
+cd frontend
+
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm start
+
+# 빌드
+npm run build
+```
+
+### 환경 변수 설정
+
+#### 백엔드 (.env)
+```bash
+MONGO_URI=mongodb://localhost:27017
+JWT_SECRET_KEY=your-secret-key-here
+JWT_ALGORITHM=HS256
+JWT_EXPIRE_HOURS=24
+```
+
+#### 프론트엔드 (.env)
+```bash
+REACT_APP_API_URL=http://localhost:8000
+REACT_APP_WS_URL=ws://localhost:8000/ws
+```
 
 ---
 
-## 8. 다음 할 일(로드맵)
+## 📈 모니터링 및 로깅
 
-1. CCTV 정적 아이콘 + FOV 다각형 오버레이 구현
-2. 마커 클릭 → 우측 패널(프레임 썸네일, 탐지 타임라인)
-3. 위험도 자동 계산 백엔드 로직 (RAG, 거리·고도 임계값)
-4. Docker compose.prod.yml – 릴리스 빌드 이미지
-5. Unit / e2e 테스트 코드 추가
+### 로그 확인
+
+```bash
+# Docker 로그
+docker-compose logs -f api
+
+# 파일 로그 (백엔드)
+tail -f backend/app.log
+```
+
+### 성능 모니터링
+
+- **API 응답시간**: FastAPI 자동 메트릭
+- **WebSocket 연결**: 연결 수 및 상태 모니터링
+- **데이터베이스**: MongoDB 쿼리 성능
 
 ---
 
-> 마지막 업데이트 : 2025‑05‑21
-> 
+## 🔍 문제 해결
 
-![image.png](attachment:69af306f-17d9-41df-98bd-c972b17cbd74:image.png)
+### 일반적인 문제
 
-![image.png](attachment:e445a8a6-74ed-4f03-9acf-6083058607a7:image.png)
+| 문제 | 원인 | 해결방법 |
+|------|------|----------|
+| 포트 충돌 | 8000/3000 포트 사용 중 | `netstat -ano \| findstr :8000` 후 프로세스 종료 |
+| MongoDB 연결 실패 | 서비스 미실행 | `docker-compose up mongo` |
+| WebSocket 연결 끊김 | 네트워크 불안정 | 자동 재연결 로직 구현됨 |
+| CORS 에러 | 도메인 정책 | `backend/app/main.py`에서 CORS 설정 확인 |
 
+### 데이터베이스 관리
 
-이상 발생시
-# 현재 디렉토리 확인
-cd D:\Birdstrike_detection
+```bash
+# MongoDB 셸 접속
+docker exec -it <mongo-container-id> mongosh
 
-# 모든 컨테이너 중지 및 정리
-docker compose down --volumes --remove-orphans
+# 데이터베이스 확인
+use birdwatch
+db.detections.find().limit(5)
 
-# 재빌드 및 실행
-docker compose up --build
+# 데이터 초기화
+db.detections.deleteMany({})
+```
+
+### 성능 최적화
+
+1. **배치 처리**: 대량 데이터는 `/detect/batch` 사용
+2. **인덱싱**: MongoDB에 적절한 인덱스 설정
+3. **캐싱**: Redis 등 캐시 레이어 추가 고려
+4. **압축**: 이미지 압축 및 CDN 사용
+
+---
+
+## 🚀 배포 가이드
+
+### 프로덕션 배포
+
+1. **환경 변수 설정**
+   ```bash
+   export MONGO_URI=mongodb://production-mongo:27017
+   export JWT_SECRET_KEY=production-secret-key
+   ```
+
+2. **Docker 이미지 빌드**
+   ```bash
+   docker build -t birdwatch-api ./backend
+   docker build -t birdwatch-frontend ./frontend
+   ```
+
+3. **컨테이너 실행**
+   ```bash
+   docker run -d -p 8000:8000 birdwatch-api
+   docker run -d -p 80:80 birdwatch-frontend
+   ```
+
+### CI/CD 파이프라인
+
+GitHub Actions 예시:
+
+```yaml
+name: Deploy BirdWatch
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and Deploy
+        run: |
+          docker-compose -f docker-compose.prod.yml up -d
+```
+
+---
+
+## 📚 추가 문서
+
+- **[API 통합 가이드](test/API_INTEGRATION_GUIDE.md)**: 탐지 모델 통합 방법
+- **[FastAPI 문서](http://localhost:8000/docs)**: 실시간 API 문서
+- **[프론트엔드 README](frontend/README.md)**: React 개발 가이드
+
+---
+
+## 🤝 기여하기
+
+1. Fork 프로젝트
+2. Feature 브랜치 생성 (`git checkout -b feature/amazing-feature`)
+3. 변경사항 커밋 (`git commit -m 'Add amazing feature'`)
+4. 브랜치 푸시 (`git push origin feature/amazing-feature`)
+5. Pull Request 생성
