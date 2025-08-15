@@ -251,7 +251,6 @@ def send_large_batch(detection_list, batch_size=100):
 
 ### 1. 테스트 스크립트 실행
 ```bash
-cd test
 python storage_api_test.py
 ```
 
@@ -268,17 +267,3 @@ tester.test_server_connection()
 sample_detection = tester.create_sample_detection("test.jpg", 0.85)
 tester.test_individual_storage_api(sample_detection, "test_cam")
 ```
-
-## 📞 지원 및 문의
-
-- **API 관련 문의**: 백엔드 팀
-- **데이터 형식 문의**: 이 가이드 문서 참조
-- **통합 지원**: 프로젝트 관리자
-- **테스트 코드**: `test/storage_api_test.py` 참조
-
-## 🔄 업데이트 이력
-
-- **2025-08-15**: 초기 가이드 작성
-- API 엔드포인트 정의
-- Python 통합 예시 추가
-- 테스트 코드 완성
