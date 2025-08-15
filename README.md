@@ -490,5 +490,3 @@ jobs:
 3. 변경사항 커밋 (`git commit -m 'Add amazing feature'`)
 4. 브랜치 푸시 (`git push origin feature/amazing-feature`)
 5. Pull Request 생성
-
----
