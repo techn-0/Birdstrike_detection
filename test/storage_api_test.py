@@ -1,6 +1,27 @@
 """
 조류 탐지 결과 저장 API 테스트 클라이언트
-저장 API와 개별 탐지 결과 저장 API 테스트 제공
+
+🎯 목적:
+- 조류 탐지 모델의 결과를 백엔드 서버로 전송하는 API 테스트
+- 실시간 탐지 결과와 배치 처리 결과 저장 기능 검증
+- 탐지 모델 팀이 API 사용법을 이해하고 통합할 수 있도록 지원
+
+📋 주요 기능:
+1. 개별 탐지 결과 저장 (/detect/result)
+2. 배치 탐지 결과 저장 (/detect/batch) 
+3. 탐지 내역 조회 (/detect/history/{cctv_id})
+4. CSV 파일 기반 테스트 데이터 처리
+
+🔧 사용 방법:
+1. 백엔드 서버 실행 (http://localhost:8000)
+2. detection_results.csv 파일 준비
+3. python storage_api_test.py 실행
+
+💡 탐지 모델 팀 참고사항:
+- 탐지 결과는 JSON 형태로 HTTP POST 요청
+- 바운딩 박스는 [x, y, width, height] 형식
+- 신뢰도(confidence)에 따라 위험도 자동 분류
+- 실시간 처리용 개별 API와 배치 처리용 API 제공
 """
 
 import requests
@@ -12,6 +33,33 @@ import time
 from typing import List, Dict, Optional, Tuple
 
 class DetectionStorageTester:
+    """
+    조류 탐지 결과 저장 API 테스트 클래스
+    
+    🎯 탐지 모델 팀을 위한 API 통합 가이드:
+    
+    1. 실시간 탐지 결과 전송:
+       - 단일 탐지 결과를 즉시 서버로 전송
+       - API: POST /detect/result
+       - 용도: 실시간 모니터링, 즉시 알림
+    
+    2. 배치 탐지 결과 전송:
+       - 여러 탐지 결과를 한 번에 전송
+       - API: POST /detect/batch
+       - 용도: 영상 분석 완료 후 일괄 처리
+    
+    3. 탐지 내역 조회:
+       - 특정 카메라의 탐지 기록 조회
+       - API: GET /detect/history/{cctv_id}
+       - 용도: 분석 결과 확인, 통계 생성
+    
+    📝 데이터 형식:
+    - 바운딩 박스: [x, y, width, height] (픽셀 단위)
+    - 중심점: [center_x, center_y] (픽셀 단위)
+    - 신뢰도: 0.0 ~ 1.0 범위의 float
+    - 시간: ISO 8601 형식 (예: 2025-08-15T12:34:56.789Z)
+    """
+    
     def __init__(self, server_url: str = "http://localhost:8000"):
         self.server_url = server_url
         self.session = requests.Session()
@@ -72,14 +120,29 @@ class DetectionStorageTester:
         """
         CSV 형식을 Detection API 형식으로 변환
         
+        🔧 탐지 모델 팀 참고:
+        이 함수는 탐지 모델의 출력을 API 형식으로 변환하는 예시입니다.
+        실제 탐지 모델에서는 다음과 같이 데이터를 준비하세요:
+        
+        📊 입력 데이터 (탐지 모델 출력):
+        - 바운딩 박스 좌표 (x1, y1, x2, y2)
+        - 신뢰도 점수 (confidence)
+        - 클래스 정보 (class_name, class_id)
+        
+        📤 출력 데이터 (API 전송 형식):
+        - bbox: [x, y, width, height] 형식
+        - pos: [center_x, center_y] 형식
+        - risk: 신뢰도 기반 위험도 등급
+        
         Args:
             csv_detection: CSV 탐지 데이터
-            cctv_id: 카메라 ID
+            cctv_id: 카메라 ID (예: "airport_cam_01")
         
         Returns:
             Dict: Detection API 형식 데이터
         """
         # 바운딩 박스를 [x, y, w, h] 형식으로 변환
+        # 🔧 탐지 모델팀: x1,y1은 좌상단, x2,y2는 우하단 좌표
         bbox = [
             csv_detection['x1'],
             csv_detection['y1'],
@@ -88,27 +151,34 @@ class DetectionStorageTester:
         ]
         
         # 중심점을 pos로 사용
+        # 🔧 탐지 모델팀: 객체의 중심 좌표 (추적에 사용)
         pos = [csv_detection['center_x'], csv_detection['center_y']]
         
         # 신뢰도 기반 위험도 설정
+        # 🚨 탐지 모델팀: 신뢰도에 따른 자동 위험도 분류
+        # - red: 높은 신뢰도 (즉시 경보)
+        # - orange: 중간 신뢰도 (주의 필요)
+        # - yellow: 낮은 신뢰도 (모니터링)
+        # - green: 매우 낮은 신뢰도 (참고용)
         confidence = csv_detection['confidence']
         if confidence >= 0.8:
-            risk = "red"
+            risk = "red"      # 🔴 즉시 경보 (신뢰도 80% 이상)
         elif confidence >= 0.6:
-            risk = "orange"
+            risk = "orange"   # 🟠 주의 필요 (신뢰도 60-80%)
         elif confidence >= 0.4:
-            risk = "yellow"
+            risk = "yellow"   # 🟡 모니터링 (신뢰도 40-60%)
         else:
-            risk = "green"
+            risk = "green"    # 🟢 참고용 (신뢰도 40% 미만)
         
+        # API 전송용 데이터 구성
         detection_data = {
-            "cctv_id": cctv_id,
-            "bbox": bbox,
-            "pos": pos,
-            "risk": risk,
-            "captured_at": datetime.now(timezone.utc).isoformat(),
-            "frame_url": f"frames/{csv_detection['image_name']}",
-            "bird_count": 1
+            "cctv_id": cctv_id,                                    # 카메라 식별자
+            "bbox": bbox,                                          # 바운딩 박스 [x,y,w,h]
+            "pos": pos,                                            # 중심점 [x,y]
+            "risk": risk,                                          # 위험도 등급
+            "captured_at": datetime.now(timezone.utc).isoformat(), # 탐지 시간 (UTC)
+            "frame_url": f"frames/{csv_detection['image_name']}",  # 프레임 이미지 URL
+            "bird_count": 1                                        # 탐지된 조류 수
         }
         
         return detection_data
@@ -117,6 +187,47 @@ class DetectionStorageTester:
                               cctv_id: str = "camera_01") -> bool:
         """
         CSV 배치 저장 API 테스트 (/detect/batch)
+        
+        🎯 탐지 모델팀 사용법:
+        이 API는 한 번에 여러 탐지 결과를 전송할 때 사용합니다.
+        
+        📝 사용 시나리오:
+        1. 영상 파일 전체 분석 완료 후 결과 전송
+        2. 오프라인 배치 처리 결과 업로드
+        3. 대량의 과거 데이터 처리
+        
+        🔧 API 호출 방법:
+        ```python
+        # 예시: 탐지 모델에서 배치 결과 전송
+        import requests
+        
+        # 탐지 결과 리스트 준비
+        detection_results = [
+            {
+                "image_index": 1,
+                "image_name": "frame_001.jpg",
+                "x1": 100, "y1": 150, "x2": 200, "y2": 250,
+                "confidence": 0.85,
+                "class_name": "bird",
+                "width": 100, "height": 100,
+                "center_x": 150, "center_y": 200
+            },
+            # ... 더 많은 탐지 결과
+        ]
+        
+        # 배치 데이터 구성
+        batch_data = {
+            "detections": detection_results,
+            "cctv_id": "airport_cam_01",
+            "captured_at": "2025-08-15T12:34:56.789Z"
+        }
+        
+        # API 호출
+        response = requests.post(
+            "http://localhost:8000/detect/batch",
+            json=batch_data
+        )
+        ```
         
         Args:
             csv_file_path: CSV 파일 경로
@@ -166,6 +277,49 @@ class DetectionStorageTester:
     def test_individual_storage_api(self, csv_detection: Dict, cctv_id: str) -> bool:
         """
         개별 탐지 결과 저장 API 테스트 (/detect/result)
+        
+        🎯 탐지 모델팀 사용법:
+        이 API는 실시간으로 개별 탐지 결과를 전송할 때 사용합니다.
+        
+        📝 사용 시나리오:
+        1. 실시간 CCTV 모니터링
+        2. 즉시 경보가 필요한 상황
+        3. 스트리밍 처리 중 탐지 결과
+        
+        🔧 API 호출 방법:
+        ```python
+        # 예시: 탐지 모델에서 실시간 결과 전송
+        import requests
+        from datetime import datetime, timezone
+        
+        # 단일 탐지 결과 데이터 준비
+        detection_data = {
+            "cctv_id": "airport_cam_01",           # 카메라 ID
+            "bbox": [100, 150, 100, 100],          # [x, y, width, height]
+            "pos": [150, 200],                     # [center_x, center_y]
+            "risk": "red",                         # 위험도: red/orange/yellow/green
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "frame_url": "frames/frame_001.jpg",   # 프레임 이미지 경로
+            "bird_count": 1                        # 탐지된 조류 수
+        }
+        
+        # API 호출
+        response = requests.post(
+            "http://localhost:8000/detect/result",
+            json=detection_data,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        if response.status_code == 200:
+            print("탐지 결과 저장 성공!")
+            result = response.json()
+            print(f"저장된 ID: {result.get('id')}")
+        ```
+        
+        ⚠️ 중요사항:
+        - 실시간 처리시 네트워크 지연 고려
+        - 높은 신뢰도(0.8+)일 때만 red 등급 사용 권장
+        - 프레임 이미지는 별도 저장소에 업로드 후 URL 제공
         
         Args:
             csv_detection: CSV 탐지 데이터
@@ -258,6 +412,54 @@ class DetectionStorageTester:
     def test_detection_history_api(self, cctv_id: str) -> bool:
         """
         탐지 내역 조회 API 테스트 (/detect/history/{cctv_id})
+        
+        🎯 탐지 모델팀 사용법:
+        이 API는 특정 카메라의 탐지 기록을 조회할 때 사용합니다.
+        
+        📝 사용 시나리오:
+        1. 탐지 모델 성능 분석
+        2. 과거 탐지 결과 통계 생성
+        3. 특정 시간대 탐지 패턴 분석
+        4. 모델 정확도 검증
+        
+        🔧 API 호출 방법:
+        ```python
+        # 예시: 특정 카메라의 탐지 내역 조회
+        import requests
+        
+        cctv_id = "airport_cam_01"
+        response = requests.get(
+            f"http://localhost:8000/detect/history/{cctv_id}",
+            headers={'Accept': 'application/json'}
+        )
+        
+        if response.status_code == 200:
+            history = response.json()
+            print(f"총 {len(history)}개의 탐지 기록")
+            
+            for detection in history:
+                print(f"시간: {detection['captured_at']}")
+                print(f"위험도: {detection['risk']}")
+                print(f"위치: {detection['bbox']}")
+                print("---")
+        ```
+        
+        📊 응답 데이터 구조:
+        ```json
+        [
+            {
+                "id": "unique_detection_id",
+                "cctv_id": "airport_cam_01",
+                "bbox": [100, 150, 100, 100],
+                "pos": [150, 200],
+                "risk": "red",
+                "captured_at": "2025-08-15T12:34:56.789Z",
+                "frame_url": "frames/frame_001.jpg",
+                "bird_count": 1,
+                "created_at": "2025-08-15T12:34:57.123Z"
+            }
+        ]
+        ```
         
         Args:
             cctv_id: 카메라 ID
@@ -422,7 +624,50 @@ class DetectionStorageTester:
         return results
 
 def main():
-    """메인 테스트 실행 함수"""
+    """
+    메인 테스트 실행 함수
+    
+    🎯 탐지 모델팀을 위한 실행 가이드:
+    
+    1. 테스트 준비:
+       ```bash
+       # 백엔드 서버 실행
+       cd backend
+       python -m uvicorn app.main:app --reload --port 8000
+       
+       # 테스트 파일 실행
+       cd test
+       python storage_api_test.py
+       ```
+    
+    2. 실제 탐지 모델 통합시:
+       ```python
+       # 탐지 모델 코드에서 API 호출 예시
+       from storage_api_test import DetectionStorageTester
+       
+       # API 클라이언트 초기화
+       api_client = DetectionStorageTester("http://localhost:8000")
+       
+       # 탐지 결과를 API 형식으로 변환 후 전송
+       detection_result = {
+           "cctv_id": "your_camera_id",
+           "bbox": [x, y, width, height],
+           "pos": [center_x, center_y],
+           "risk": "red",  # 신뢰도에 따라 설정
+           "captured_at": current_time,
+           "frame_url": frame_image_url,
+           "bird_count": detected_bird_count
+       }
+       
+       # 실시간 전송
+       api_client.test_individual_storage_api(detection_result, "camera_id")
+       ```
+    
+    📞 연락처:
+    - API 관련 문의: 백엔드 팀
+    - 데이터 형식 문의: 이 테스트 코드 참조
+    - 통합 지원: 프로젝트 관리자
+    """
     
     # 테스터 초기화
     tester = DetectionStorageTester("http://localhost:8000")
@@ -447,4 +692,24 @@ def main():
         tester.test_individual_storage_api(low_conf_sample, "camera_low_conf")
 
 if __name__ == "__main__":
+    """
+    🚀 테스트 실행부
+    
+    💡 탐지 모델팀 참고:
+    이 스크립트를 실행하면 다음과 같은 순서로 테스트가 진행됩니다:
+    
+    1. ✅ 서버 연결 확인
+    2. 🔍 개별 탐지 결과 저장 테스트
+    3. 📦 배치 탐지 결과 저장 테스트  
+    4. 🔄 순차 전송 테스트
+    5. 📊 탐지 내역 조회 테스트
+    
+    각 테스트는 실제 API 호출 방법을 보여주므로,
+    탐지 모델 통합시 이 코드를 참고하여 구현하세요.
+    
+    🔧 실행 전 확인사항:
+    - 백엔드 서버가 http://localhost:8000에서 실행 중인지 확인
+    - detection_results.csv 파일이 test 폴더에 있는지 확인
+    - 네트워크 연결 상태 확인
+    """
     main()
