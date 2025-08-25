@@ -155,7 +155,7 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
             className="border rounded px-2 py-1"
           />
           <input
-            placeholder="방향"
+            placeholder="방향(각도)"
             type="number"
             value={form.direction ?? ""}
             onChange={e => setForm(f => ({ ...f, direction: Number(e.target.value) }))}
@@ -163,7 +163,7 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
             className="border rounded px-2 py-1"
           />
           <input
-            placeholder="시야각"
+            placeholder="시야각(각도)"
             type="number"
             value={form.angle ?? ""}
             onChange={e => setForm(f => ({ ...f, angle: Number(e.target.value) }))}
