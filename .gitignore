@@ -341,3 +341,14 @@ dist/
 build/
 # VSCode
 .vscode/
+
+
+_data/
+data/
+**/mongo/**
+**/journal/**
+**/diagnostic.data/**
+*.wt
+WiredTiger
+WiredTiger.*
+WiredTigerLog.*
