@@ -78,14 +78,23 @@ Birdstrike_detection/
 │   │   ├── airport_bg.png     # 공항 배경 이미지
 │   │   └── index.html
 │   └── package.json           # Node.js 의존성
-├── test/                      # 테스트 파일
-│   ├── storage_api_test.py    # API 테스트 스크립트
-│   ├── batch_test.py          # 배치 처리 테스트
-│   ├── detection_test.py      # 탐지 기능 테스트
-│   ├── csv_test_client.py     # CSV 데이터 테스트
-│   ├── detection_results.csv  # 테스트 데이터
-│   ├── detection_image/       # 테스트 이미지
-│   └── API_INTEGRATION_GUIDE.md # API 통합 가이드
+├── test/                      # 테스트 및 샘플 데이터
+│   ├── csv_detection_test.py      # CSV 기반 탐지 테스트
+│   ├── detection_api_example.py   # 탐지 API 예제
+│   ├── detection_results.csv      # 샘플 탐지 결과 데이터
+│   ├── QUICKSTART.md              # 빠른 시작 가이드
+│   ├── README_DETECTION_API.md    # 탐지 API 설명서
+│   ├── __pycache__/               # 파이썬 캐시
+│   ├── detection_image/           # 테스트 이미지
+│   │   ├── D02_20210628090856_0000714_crop_000.png
+│   │   ├── D02_20210628090856_0008028_crop_005.png
+│   │   ├── D02_20210721142744_0001120_crop_007.png
+│   │   ├── D02_20210721142744_0001121_crop_002.png
+│   │   ├── D02_20210721142744_0009136_crop_004.png
+│   │   ├── D02_20210721142744_0009499_crop_007.png
+│   │   └── ...
+│   └── test/
+│       └── OLD/                    # 이전 테스트 데이터
 ├── _data/
 │   └── mongo/                 # MongoDB 데이터 영구 저장소
 ├── birdwatch-auth/            # 독립 인증 서비스 (선택사항)
