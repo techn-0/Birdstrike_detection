@@ -51,11 +51,25 @@ export default function DetectionModal({
               <br />
               <b>탐지된 새 수:</b> {d.bird_count}
               {d.frame_url && (
-                <div>
+                <div style={{ marginTop: 8 }}>
                   <img
                     src={`${process.env.REACT_APP_API_HTTP}${d.frame_url}`}
-                    alt="frame"
-                    width={"400vw"}
+                    alt="탐지된 조류"
+                    style={{
+                      maxWidth: "400px",
+                      maxHeight: "300px",
+                      width: "auto",
+                      height: "auto",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px"
+                    }}
+                    onError={(e) => {
+                      console.error("이미지 로딩 실패:", e.currentTarget.src);
+                      e.currentTarget.style.display = "none";
+                    }}
+                    onLoad={() => {
+                      console.log("이미지 로딩 성공:", `${process.env.REACT_APP_API_HTTP}${d.frame_url}`);
+                    }}
                   />
                 </div>
               )}
