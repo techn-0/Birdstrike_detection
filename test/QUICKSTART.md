@@ -2,6 +2,10 @@
 
 ## ⚡ 5분 만에 시작하기
 
+<img width="321" height="373" alt="image" src="https://github.com/user-attachments/assets/a88e57a8-45a7-43f6-9938-0a8fdb0d2c56" />
+프론트 엔드에 이와 같은 cctv 를 먼저 등록해 주세요
+
+
 ### 1. 서버 실행 ✅
 ```bash
 # 백엔드 (터미널 1)
