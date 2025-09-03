@@ -104,25 +104,68 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 9999 // 상단바보다 위에 표시
+    }}>
+      <div style={{
+        backgroundColor: "white",
+        borderRadius: "12px",
+        padding: "24px",
+        width: "100%",
+        maxWidth: "400px",
+        margin: "16px",
+        boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px"
+        }}>
+          <h2 style={{
+            margin: 0,
+            fontSize: "24px",
+            fontWeight: "bold",
+            color: "#1f2937"
+          }}>
             {isSignupMode ? '회원가입' : '로그인'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl"
+            style={{
+              backgroundColor: "transparent",
+              border: "none",
+              fontSize: "24px",
+              color: "#6b7280",
+              cursor: "pointer",
+              padding: "4px",
+              borderRadius: "6px",
+              transition: "color 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.color = "#374151"}
+            onMouseOut={(e) => e.currentTarget.style.color = "#6b7280"}
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {isSignupMode && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  marginBottom: "4px"
+                }}>
                   이름
                 </label>
                 <input
@@ -130,13 +173,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "2px solid #d1d5db",
+                    borderRadius: "8px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                    fontSize: "14px",
+                    boxSizing: "border-box"
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = "#3b82f6"}
+                  onBlur={(e) => e.currentTarget.style.borderColor = "#d1d5db"}
                   required={isSignupMode}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{
+                  display: "block",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#374151",
+                  marginBottom: "4px"
+                }}>
                   이메일
                 </label>
                 <input
@@ -145,7 +205,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="user@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "2px solid #d1d5db",
+                    borderRadius: "8px",
+                    outline: "none",
+                    transition: "border-color 0.2s",
+                    fontSize: "14px",
+                    boxSizing: "border-box"
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = "#3b82f6"}
+                  onBlur={(e) => e.currentTarget.style.borderColor = "#d1d5db"}
                   required={isSignupMode}
                 />
               </div>
@@ -153,7 +224,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label style={{
+              display: "block",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "#374151",
+              marginBottom: "4px"
+            }}>
               사용자명
             </label>
             <input
@@ -162,13 +239,30 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               value={formData.username}
               onChange={handleInputChange}
               placeholder="3자 이상"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{
+                width: "100%",
+                padding: "12px",
+                border: "2px solid #d1d5db",
+                borderRadius: "8px",
+                outline: "none",
+                transition: "border-color 0.2s",
+                fontSize: "14px",
+                boxSizing: "border-box"
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = "#3b82f6"}
+              onBlur={(e) => e.currentTarget.style.borderColor = "#d1d5db"}
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label style={{
+              display: "block",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "#374151",
+              marginBottom: "4px"
+            }}>
               비밀번호
             </label>
             <input
@@ -177,21 +271,50 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               value={formData.password}
               onChange={handleInputChange}
               placeholder="6자 이상"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{
+                width: "100%",
+                padding: "12px",
+                border: "2px solid #d1d5db",
+                borderRadius: "8px",
+                outline: "none",
+                transition: "border-color 0.2s",
+                fontSize: "14px",
+                boxSizing: "border-box"
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = "#3b82f6"}
+              onBlur={(e) => e.currentTarget.style.borderColor = "#d1d5db"}
               required
             />
           </div>
 
           {isSignupMode && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label style={{
+                display: "block",
+                fontSize: "14px",
+                fontWeight: "500",
+                color: "#374151",
+                marginBottom: "4px"
+              }}>
                 역할
               </label>
               <select
                 name="role"
                 value={formData.role}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  border: "2px solid #d1d5db",
+                  borderRadius: "8px",
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                  backgroundColor: "white"
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = "#3b82f6"}
+                onBlur={(e) => e.currentTarget.style.borderColor = "#d1d5db"}
               >
                 <option value="user">사용자</option>
                 <option value="admin">관리자</option>
@@ -200,7 +323,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           )}
 
           {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-2 rounded">
+            <div style={{
+              color: "#dc2626",
+              fontSize: "14px",
+              backgroundColor: "#fef2f2",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #fecaca"
+            }}>
               {error}
             </div>
           )}
@@ -208,24 +338,59 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            style={{
+              width: "100%",
+              backgroundColor: loading ? "#9ca3af" : "#3b82f6",
+              color: "white",
+              padding: "12px 16px",
+              border: "none",
+              borderRadius: "8px",
+              cursor: loading ? "not-allowed" : "pointer",
+              fontWeight: "500",
+              fontSize: "16px",
+              transition: "background-color 0.2s"
+            }}
+            onMouseOver={(e) => {
+              if (!loading) e.currentTarget.style.backgroundColor = "#2563eb";
+            }}
+            onMouseOut={(e) => {
+              if (!loading) e.currentTarget.style.backgroundColor = "#3b82f6";
+            }}
           >
             {loading ? '처리 중...' : (isSignupMode ? '회원가입' : '로그인')}
           </button>
         </form>
 
-        <div className="mt-4 text-center">
+        <div style={{ marginTop: "16px", textAlign: "center" }}>
           <button
             onClick={toggleMode}
-            className="text-blue-600 hover:text-blue-800 text-sm underline"
+            style={{
+              backgroundColor: "transparent",
+              border: "none",
+              color: "#3b82f6",
+              fontSize: "14px",
+              textDecoration: "underline",
+              cursor: "pointer",
+              fontWeight: "500",
+              transition: "color 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.color = "#2563eb"}
+            onMouseOut={(e) => e.currentTarget.style.color = "#3b82f6"}
           >
             {isSignupMode ? '이미 계정이 있으신가요? 로그인' : '계정이 없으신가요? 회원가입'}
           </button>
         </div>
 
         {/* 테스트용 계정 정보 */}
-        <div className="mt-4 p-3 bg-gray-100 rounded text-xs text-gray-600">
-          <div className="font-semibold mb-1">테스트 계정:</div>
+        <div style={{
+          marginTop: "16px",
+          padding: "12px",
+          backgroundColor: "#f9fafb",
+          borderRadius: "8px",
+          fontSize: "12px",
+          color: "#6b7280"
+        }}>
+          <div style={{ fontWeight: "600", marginBottom: "4px" }}>테스트 계정:</div>
           <div>관리자: admin / admin123</div>
           <div>사용자: user / user123</div>
         </div>
