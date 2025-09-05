@@ -26,13 +26,7 @@ test/
 ### 1. 환경 준비
 ```bash
 # 1. 백엔드 서버 실행 (포트 8000)
-cd backend
-python -m uvicorn app.main:app --reload --port 8000
-
 # 2. 프론트엔드 실행 (포트 3000)
-cd frontend
-npm start
-
 # 3. 테스트 디렉토리로 이동
 cd test
 ```
