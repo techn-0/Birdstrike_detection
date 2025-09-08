@@ -13,6 +13,8 @@ function App() {
   const [cctvs, setCctvs] = useState<CctvMeta[]>([]);
   const [dets, setDets] = useState<Detection[]>([]);
   const [selectedCctvId, setSelectedCctvId] = useState<string | null>(null);
+  const [mapClickMode, setMapClickMode] = useState(false);
+  const [pendingCctv, setPendingCctv] = useState<Partial<CctvMeta> | null>(null);
 
   // CCTV 목록 불러오기
   useEffect(() => {
@@ -20,7 +22,21 @@ function App() {
       credentials: "include" // 쿠키 포함
     })
       .then((res) => res.json())
-      .then(setCctvs);
+      .then((data: CctvMeta[]) => {
+        // 기존 정규화된 좌표(0-1)를 실제 좌표로 변환
+        const convertedCctvs = data.map(cctv => {
+          // 좌표가 0-1 범위면 정규화된 좌표로 간주하고 변환 (이전 버전 호환성 유지용)
+          if (cctv.pos[0] >= 0 && cctv.pos[0] <= 1 && cctv.pos[1] >= 0 && cctv.pos[1] <= 1) {
+            const [u, v] = cctv.pos;
+            // 인천공항 영역으로 변환
+            const lat = 37.4550 + v * (37.4712 - 37.4550);
+            const lng = 126.4200 + u * (126.4614 - 126.4200);
+            return { ...cctv, pos: [lat, lng] as [number, number] };
+          }
+          return cctv;
+        });
+        setCctvs(convertedCctvs);
+      });
   }, []);
 
   // 앱 시작 시, 모든 CCTV의 탐지 내역을 DB에서 불러오기
@@ -67,7 +83,18 @@ function App() {
     const res = await fetch(`${API}/cctv/meta`, {
       credentials: "include"
     });
-    setCctvs(await res.json());
+    const data: CctvMeta[] = await res.json();
+    // 좌표 변환 적용
+    const convertedCctvs = data.map(cctv => {
+      if (cctv.pos[0] >= 0 && cctv.pos[0] <= 1 && cctv.pos[1] >= 0 && cctv.pos[1] <= 1) {
+        const [u, v] = cctv.pos;
+        const lat = 37.4550 + v * (37.4712 - 37.4550);
+        const lng = 126.4200 + u * (126.4614 - 126.4200);
+        return { ...cctv, pos: [lat, lng] as [number, number] };
+      }
+      return cctv;
+    });
+    setCctvs(convertedCctvs);
   };
 
   // CCTV 삭제 함수
@@ -79,11 +106,31 @@ function App() {
     const res = await fetch(`${API}/cctv/meta`, {
       credentials: "include"
     });
-    setCctvs(await res.json());
+    const data: CctvMeta[] = await res.json();
+    // 좌표 변환 적용
+    const convertedCctvs = data.map(cctv => {
+      if (cctv.pos[0] >= 0 && cctv.pos[0] <= 1 && cctv.pos[1] >= 0 && cctv.pos[1] <= 1) {
+        const [u, v] = cctv.pos;
+        const lat = 37.4550 + v * (37.4712 - 37.4550);
+        const lng = 126.4200 + u * (126.4614 - 126.4200);
+        return { ...cctv, pos: [lat, lng] as [number, number] };
+      }
+      return cctv;
+    });
+    setCctvs(convertedCctvs);
   };
 
   // 모달 닫기 함수
   const closeModal = () => setSelectedCctvId(null);
+
+  // 지도 클릭으로 CCTV 위치 설정
+  const handleMapClick = (lat: number, lng: number) => {
+    if (mapClickMode && pendingCctv) {
+      const updatedCctv = { ...pendingCctv, pos: [lat, lng] as [number, number] };
+      setPendingCctv(updatedCctv);
+      setMapClickMode(false);
+    }
+  };
 
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column" }}>
@@ -102,6 +149,7 @@ function App() {
             cctvs={cctvs}
             detections={dets}
             onCctvClick={setSelectedCctvId}
+            onMapClick={handleMapClick}
           />
         </div>
       </div>
@@ -113,6 +161,10 @@ function App() {
         onDelete={deleteCctv}
         detections={dets}
         onCctvNameClick={setSelectedCctvId}
+        mapClickMode={mapClickMode}
+        onMapClickModeChange={setMapClickMode}
+        pendingCctv={pendingCctv}
+        onPendingCctvChange={setPendingCctv}
       />
 
       {/* 탐지 내역 모달 */}

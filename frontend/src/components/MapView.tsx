@@ -1,19 +1,35 @@
 import React from "react";
-import { MapContainer, ImageOverlay, Marker, Popup, Polygon, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { CctvMeta } from "../types";
 
-const bounds: L.LatLngBoundsExpression = [[0, 0], [647, 1000]];
+// 인천공항 실제 좌표 (위도, 경도)
+const INCHEON_AIRPORT_CENTER: [number, number] = [37.4631, 126.4407];
+
 const API = process.env.REACT_APP_API_HTTP;
+
+// 지도 클릭 이벤트 핸들러 컴포넌트
+function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) => {
+      if (onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
+  return null;
+}
 
 export default function MapView({
   cctvs,
   detections,
   onCctvClick,
+  onMapClick,
 }: {
   cctvs: CctvMeta[];
   detections: any[];
   onCctvClick?: (cctvId: string) => void;
+  onMapClick?: (lat: number, lng: number) => void;
 }) {
   const deg2rad = (deg: number) => (deg * Math.PI) / 180;
 
@@ -48,31 +64,48 @@ export default function MapView({
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <MapContainer
-        crs={L.CRS.Simple}
-        bounds={bounds}
+        center={INCHEON_AIRPORT_CENTER}
+        zoom={14}         // 공항이 잘 보이는 줌 레벨
         style={{ height: "100%", width: "100%" }}
-        zoom={0}           // 초기 확대 레벨
-        minZoom={-2}       // 더 멀리까지 축소 가능
-        maxZoom={4}        // 더 가까이까지 확대 가능
-        zoomDelta={0.25}   // 확대/축소 단위(기본은 1, 더 작게 하면 더 세밀)
-        zoomSnap={0.25}    // 마우스 휠 등으로 확대/축소할 때 스냅 단위
       >
-        <ImageOverlay url="/airport_bg.png" bounds={bounds} />
+        {/* OpenStreetMap 타일 레이어 */}
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        {/* 지도 클릭 이벤트 핸들러 */}
+        <MapClickHandler 
+          onMapClick={(lat, lng) => {
+            if (onMapClick) {
+              onMapClick(lat, lng);
+            }
+          }} 
+        />
 
         {/* CCTV 마커와 FOV */}
         {cctvs.map((c) => {
-          const markerPos: [number, number] = [c.pos[1] * 647, c.pos[0] * 1000];
-          const center: [number, number] = [c.pos[1] * 647, c.pos[0] * 1000];
+          // pos가 이미 [lat, lng] 형태라고 가정
+          const markerPos: [number, number] = [c.pos[0], c.pos[1]];
+          const center: [number, number] = [c.pos[0], c.pos[1]];
+          
+          // FOV 계산을 위한 거리(미터 단위)
+          const distance = c.length * 1000; // km를 m로 변환
           const half = c.angle / 2;
           const rad1 = deg2rad(c.direction - half);
           const rad2 = deg2rad(c.direction + half);
+          
+          // 위도/경도에서 거리 계산 (간단한 근사)
+          const latOffset = (distance / 111320); // 1도 = 약 111,320m
+          const lngOffset = (distance / (111320 * Math.cos(deg2rad(center[0]))));
+          
           const left: [number, number] = [
-            (c.pos[1] + c.length * Math.sin(rad1)) * 647,
-            (c.pos[0] + c.length * Math.cos(rad1)) * 1000,
+            center[0] + latOffset * Math.cos(rad1),
+            center[1] + lngOffset * Math.sin(rad1),
           ];
           const right: [number, number] = [
-            (c.pos[1] + c.length * Math.sin(rad2)) * 647,
-            (c.pos[0] + c.length * Math.cos(rad2)) * 1000,
+            center[0] + latOffset * Math.cos(rad2),
+            center[1] + lngOffset * Math.sin(rad2),
           ];
           const polyCoords = [center, left, right];
           const color = c.color || "#007bff";
@@ -112,7 +145,7 @@ export default function MapView({
         {Object.values(latestDetectionByCctv).map((d: any, i) => {
           const cctv = cctvs.find((c) => c.id === d.cctv_id);
           if (!cctv) return null;
-          const markerPos: [number, number] = [cctv.pos[1] * 647, cctv.pos[0] * 1000];
+          const markerPos: [number, number] = [cctv.pos[0], cctv.pos[1]];
           return (
             <Marker
               key={i}

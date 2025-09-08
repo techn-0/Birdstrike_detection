@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CctvMeta, Detection } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -8,11 +8,35 @@ interface Props {
   onDelete: (id: string) => void;
   detections: Detection[];
   onCctvNameClick?: (id: string) => void;
+  mapClickMode: boolean;
+  onMapClickModeChange: (mode: boolean) => void;
+  pendingCctv: Partial<CctvMeta> | null;
+  onPendingCctvChange: (cctv: Partial<CctvMeta> | null) => void;
 }
 
-export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, onCctvNameClick }: Props) {
+export default function SidePanel({ 
+  cctvs, 
+  onAddOrUpdate, 
+  onDelete, 
+  detections, 
+  onCctvNameClick,
+  mapClickMode,
+  onMapClickModeChange,
+  pendingCctv,
+  onPendingCctvChange
+}: Props) {
   const { user, isAdmin } = useAuth();
   const [form, setForm] = useState<Partial<CctvMeta> & { posInput?: string }>({});
+
+  // pendingCctv가 변경되면 form에 반영
+  useEffect(() => {
+    if (pendingCctv) {
+      setForm({
+        ...pendingCctv,
+        posInput: pendingCctv.pos ? pendingCctv.pos.join(",") : ""
+      });
+    }
+  }, [pendingCctv]);
 
   const isEdit = form.id && cctvs.some(c => c.id === form.id);
 
@@ -59,8 +83,8 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
                 <span className="text-sm text-gray-600"><b>ID:</b> {c.id}</span>
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                위치: {c.pos.join(", ")}<br />
-                방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}
+                위치: {c.pos[0].toFixed(4)}, {c.pos[1].toFixed(4)}<br />
+                방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}km
               </div>
               <div className="mt-2">
                 {isAdmin() && (
@@ -103,6 +127,11 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
         {isAdmin() ? (
           <>
             <h3 className="font-bold mb-3 text-blue-700">CCTV 추가/수정</h3>
+            {mapClickMode && (
+              <div className="mb-3 p-2 bg-orange-100 border border-orange-300 rounded text-sm text-orange-700">
+                🗺️ 지도에서 CCTV를 설치할 위치를 클릭하세요
+              </div>
+            )}
             <form
               className="flex flex-col gap-2"
               onSubmit={e => {
@@ -113,7 +142,7 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
               form.name &&
               posArr &&
               posArr.length === 2 &&
-              posArr.every((v) => !isNaN(v) && v >= 0 && v <= 1) &&
+              posArr.every((v) => !isNaN(v)) &&
               form.direction !== undefined &&
               form.angle !== undefined &&
               form.length !== undefined
@@ -128,6 +157,8 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
                 color: form.color,
               });
               setForm({});
+              onPendingCctvChange(null);
+              onMapClickModeChange(false);
             }
           }}
         >
@@ -147,13 +178,29 @@ export default function SidePanel({ cctvs, onAddOrUpdate, onDelete, detections, 
             required
             className="border rounded px-2 py-1"
           />
-          <input
-            placeholder="위치 (u,v, 예: 0.5,0.5)"
-            value={form.posInput ?? ""}
-            onChange={e => setForm(f => ({ ...f, posInput: e.target.value }))}
-            required
-            className="border rounded px-2 py-1"
-          />
+          <div style={{ display: "flex", gap: "4px" }}>
+            <input
+              placeholder="위치 (위도,경도, 예: 37.4631,126.4407)"
+              value={form.posInput ?? ""}
+              onChange={e => setForm(f => ({ ...f, posInput: e.target.value }))}
+              required
+              className="border rounded px-2 py-1 flex-1"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                onPendingCctvChange(form);
+                onMapClickModeChange(true);
+              }}
+              className={`px-3 py-1 rounded text-sm transition ${
+                mapClickMode 
+                  ? "bg-orange-500 text-white" 
+                  : "bg-gray-200 hover:bg-gray-300"
+              }`}
+            >
+              {mapClickMode ? "지도 클릭 대기중..." : "지도에서 선택"}
+            </button>
+          </div>
           <input
             placeholder="방향(각도)"
             type="number"
