@@ -6,6 +6,12 @@ export interface CctvMeta {
   angle: number;
   length: number;
   color?: string; // 색상(선택)
+  sensor_size?: [number, number]; // 센서 크기 [가로, 세로] (mm)
+  resolution?: [number, number];  // 해상도 [가로, 세로]
+  focal_length?: number;          // 초점거리 (mm)
+  sensor_diagonal?: number;       // 센서 대각선 길이 (mm)
+  crop_factor?: number;           // 크롭팩터
+  model_name?: string;            // 모델명
 }
 
 export interface Detection {

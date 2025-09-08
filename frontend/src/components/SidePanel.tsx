@@ -26,14 +26,20 @@ export default function SidePanel({
   onPendingCctvChange
 }: Props) {
   const { user, isAdmin } = useAuth();
-  const [form, setForm] = useState<Partial<CctvMeta> & { posInput?: string }>({});
+  const [form, setForm] = useState<Partial<CctvMeta> & { 
+    posInput?: string;
+    sensorSizeInput?: string;
+    resolutionInput?: string;
+  }>({});
 
   // pendingCctv가 변경되면 form에 반영
   useEffect(() => {
     if (pendingCctv) {
       setForm({
         ...pendingCctv,
-        posInput: pendingCctv.pos ? pendingCctv.pos.join(",") : ""
+        posInput: pendingCctv.pos ? pendingCctv.pos.join(",") : "",
+        sensorSizeInput: pendingCctv.sensor_size ? pendingCctv.sensor_size.join(",") : "",
+        resolutionInput: pendingCctv.resolution ? pendingCctv.resolution.join(",") : ""
       });
     }
   }, [pendingCctv]);
@@ -81,17 +87,46 @@ export default function SidePanel({
                 </b>
                 <br />
                 <span className="text-sm text-gray-600"><b>ID:</b> {c.id}</span>
+                {c.model_name && (
+                  <>
+                    <br />
+                    <span className="text-sm text-gray-600"><b>모델:</b> {c.model_name}</span>
+                  </>
+                )}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 위치: {c.pos[0].toFixed(4)}, {c.pos[1].toFixed(4)}<br />
                 방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}km
+                {c.resolution && (
+                  <>
+                    <br />
+                    해상도: {c.resolution[0]}×{c.resolution[1]}
+                  </>
+                )}
+                {c.sensor_size && (
+                  <>
+                    <br />
+                    센서: {c.sensor_size[0]}×{c.sensor_size[1]}mm
+                  </>
+                )}
+                {c.focal_length && (
+                  <>
+                    <br />
+                    초점거리: {c.focal_length}mm
+                  </>
+                )}
               </div>
               <div className="mt-2">
                 {isAdmin() && (
                   <>
                     <button 
                       className="text-blue-500 hover:underline mr-3" 
-                      onClick={() => setForm({ ...c, posInput: c.pos.join(",") })}
+                      onClick={() => setForm({ 
+                        ...c, 
+                        posInput: c.pos.join(","),
+                        sensorSizeInput: c.sensor_size ? c.sensor_size.join(",") : "",
+                        resolutionInput: c.resolution ? c.resolution.join(",") : ""
+                      })}
                     >
                       수정
                     </button>
@@ -122,6 +157,8 @@ export default function SidePanel({
           padding: "16px",
           background: "rgba(255,255,255,0.98)",
           flexShrink: 0, // 크기 고정
+          maxHeight: "50vh", // 최대 높이 제한
+          overflowY: "auto", // 폼이 길어지면 스크롤
         }}
       >
         {isAdmin() ? (
@@ -137,31 +174,40 @@ export default function SidePanel({
               onSubmit={e => {
                 e.preventDefault();
                 const posArr = form.posInput?.split(",").map(Number) as [number, number] | undefined;
-            if (
-              form.id &&
-              form.name &&
-              posArr &&
-              posArr.length === 2 &&
-              posArr.every((v) => !isNaN(v)) &&
-              form.direction !== undefined &&
-              form.angle !== undefined &&
-              form.length !== undefined
-            ) {
-              onAddOrUpdate({
-                id: form.id,
-                name: form.name,
-                pos: posArr,
-                direction: form.direction,
-                angle: form.angle,
-                length: form.length,
-                color: form.color,
-              });
-              setForm({});
-              onPendingCctvChange(null);
-              onMapClickModeChange(false);
-            }
-          }}
-        >
+                const sensorSizeArr = form.sensorSizeInput?.split(",").map(Number) as [number, number] | undefined;
+                const resolutionArr = form.resolutionInput?.split(",").map(Number) as [number, number] | undefined;
+                
+                if (
+                  form.id &&
+                  form.name &&
+                  posArr &&
+                  posArr.length === 2 &&
+                  posArr.every((v) => !isNaN(v)) &&
+                  form.direction !== undefined &&
+                  form.angle !== undefined &&
+                  form.length !== undefined
+                ) {
+                  onAddOrUpdate({
+                    id: form.id,
+                    name: form.name,
+                    pos: posArr,
+                    direction: form.direction,
+                    angle: form.angle,
+                    length: form.length,
+                    color: form.color,
+                    sensor_size: sensorSizeArr && sensorSizeArr.length === 2 && sensorSizeArr.every(v => !isNaN(v)) ? sensorSizeArr : undefined,
+                    resolution: resolutionArr && resolutionArr.length === 2 && resolutionArr.every(v => !isNaN(v)) ? resolutionArr : undefined,
+                    focal_length: form.focal_length,
+                    sensor_diagonal: form.sensor_diagonal,
+                    crop_factor: form.crop_factor,
+                    model_name: form.model_name
+                  });
+                  setForm({});
+                  onPendingCctvChange(null);
+                  onMapClickModeChange(false);
+                }
+              }}
+            >
           <input
             type="text"
             placeholder="ID(수정 불가)"
@@ -223,6 +269,46 @@ export default function SidePanel({
             value={form.length ?? ""}
             onChange={e => setForm(f => ({ ...f, length: Number(e.target.value) }))}
             required
+            className="border rounded px-2 py-1"
+          />
+          <input
+            placeholder="센서 크기 (예: 36,24)"
+            value={form.sensorSizeInput ?? ""}
+            onChange={e => setForm(f => ({ ...f, sensorSizeInput: e.target.value }))}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            placeholder="해상도 (예: 1920,1080)"
+            value={form.resolutionInput ?? ""}
+            onChange={e => setForm(f => ({ ...f, resolutionInput: e.target.value }))}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            placeholder="초점거리 (mm)"
+            type="number"
+            value={form.focal_length ?? ""}
+            onChange={e => setForm(f => ({ ...f, focal_length: Number(e.target.value) || undefined }))}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            placeholder="센서 대각선 길이 (mm)"
+            type="number"
+            value={form.sensor_diagonal ?? ""}
+            onChange={e => setForm(f => ({ ...f, sensor_diagonal: Number(e.target.value) || undefined }))}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            placeholder="크롭팩터"
+            type="number"
+            step="0.1"
+            value={form.crop_factor ?? ""}
+            onChange={e => setForm(f => ({ ...f, crop_factor: Number(e.target.value) || undefined }))}
+            className="border rounded px-2 py-1"
+          />
+          <input
+            placeholder="모델명"
+            value={form.model_name ?? ""}
+            onChange={e => setForm(f => ({ ...f, model_name: e.target.value || undefined }))}
             className="border rounded px-2 py-1"
           />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>

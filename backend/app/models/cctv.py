@@ -65,3 +65,9 @@ class CctvMeta(BaseModel):
     angle: float
     length: float
     color: Optional[str] = None   # 색상 필드 추가
+    sensor_size: Optional[List[float]] = None  # 센서 크기 [가로, 세로] (mm)
+    resolution: Optional[List[int]] = None     # 해상도 [가로, 세로]
+    focal_length: Optional[float] = None       # 초점거리 (mm)
+    sensor_diagonal: Optional[float] = None    # 센서 대각선 길이 (mm)
+    crop_factor: Optional[float] = None        # 크롭팩터
+    model_name: Optional[str] = None           # 모델명
