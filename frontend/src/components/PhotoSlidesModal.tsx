@@ -345,8 +345,8 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
               fontSize: "14px",
               color: "#6b7280"
             }}>
-              총 {data.total_images}개 이미지 | 현재: {currentIndex + 1}/{data.images.length} | 
-              신뢰도 {(confidenceThreshold * 100).toFixed(0)}% 이상
+              총 {data.total_images}개 이미지 | 현재: {currentIndex + 1}/{data.total_images} | 
+              신뢰도 {(confidenceThreshold * 100).toFixed(0)}% 이상 ({data.images.length}개 표시)
             </div>
           )}
         </div>
