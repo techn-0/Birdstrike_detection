@@ -1,0 +1,45 @@
+# 도커 빌드에서 제외할 파일들
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# 대용량 데이터셋 파일들 제외
+app/static/DATASET(AirBirds)_Predict/
+app/static/DATASET(AirBirds)_Predict_original/
+
+# 테스트 파일들
+test/
+*.test.py
+
+# IDE 설정 파일들
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS 생성 파일들
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

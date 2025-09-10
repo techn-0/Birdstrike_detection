@@ -18,5 +18,8 @@ services:
       - MONGO_URI=mongodb://mongo:27017
     volumes:
       - ./backend:/code        # 코드 바로 반영(핫리로드)
+      # 대용량 데이터셋 폴더들을 외부에서 마운트 (도커 이미지에 포함하지 않음)
+      - ./backend/app/static/DATASET(AirBirds)_Predict:/code/app/static/DATASET(AirBirds)_Predict
+      - ./backend/app/static/DATASET(AirBirds)_Predict_original:/code/app/static/DATASET(AirBirds)_Predict_original
     depends_on:
       - mongo                  # mongo가 먼저 떠야 api 시작
