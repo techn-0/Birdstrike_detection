@@ -128,14 +128,14 @@ function App() {
   // 포토 슬라이드 모달 닫기
   const closePhotoSlidesModal = () => setPhotoSlidesCctvId(null);
 
-  // CCTV 이름 클릭 핸들러
+  // CCTV 이름 클릭 핸들러 (항상 탐지 내역 모달을 열음)
   const handleCctvNameClick = (cctvId: string) => {
-    const cctv = cctvs.find(c => c.id === cctvId);
-    if (cctv?.is_photo_slides) {
-      setPhotoSlidesCctvId(cctvId);
-    } else {
-      setSelectedCctvId(cctvId);
-    }
+    setSelectedCctvId(cctvId);
+  };
+
+  // 포토 슬라이드 버튼 클릭 핸들러
+  const handlePhotoSlidesClick = (cctvId: string) => {
+    setPhotoSlidesCctvId(cctvId);
   };
 
   // 지도 클릭으로 CCTV 위치 설정
@@ -177,6 +177,7 @@ function App() {
         onDelete={deleteCctv}
         detections={dets}
         onCctvNameClick={handleCctvNameClick}
+        onPhotoSlidesClick={handlePhotoSlidesClick}
         mapClickMode={mapClickMode}
         onMapClickModeChange={setMapClickMode}
         pendingCctv={pendingCctv}

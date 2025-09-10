@@ -8,6 +8,7 @@ interface Props {
   onDelete: (id: string) => void;
   detections: Detection[];
   onCctvNameClick?: (id: string) => void;
+  onPhotoSlidesClick?: (id: string) => void;
   mapClickMode: boolean;
   onMapClickModeChange: (mode: boolean) => void;
   pendingCctv: Partial<CctvMeta> | null;
@@ -20,6 +21,7 @@ export default function SidePanel({
   onDelete, 
   detections, 
   onCctvNameClick,
+  onPhotoSlidesClick,
   mapClickMode,
   onMapClickModeChange,
   pendingCctv,
@@ -123,6 +125,14 @@ export default function SidePanel({
                 )}
               </div>
               <div className="mt-2">
+                {c.is_photo_slides && (
+                  <button 
+                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm mr-2 mb-2"
+                    onClick={() => onPhotoSlidesClick && onPhotoSlidesClick(c.id)}
+                  >
+                    📸 포토 슬라이드 보기
+                  </button>
+                )}
                 {isAdmin() && (
                   <>
                     <button 

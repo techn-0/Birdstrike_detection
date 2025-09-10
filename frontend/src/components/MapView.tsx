@@ -128,18 +128,10 @@ export default function MapView({
                       fontWeight: "bold", 
                       background: "#fff8", 
                       padding: "2px 6px", 
-                      borderRadius: 4,
-                      cursor: c.is_photo_slides ? "pointer" : "default"
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (c.is_photo_slides && onCctvNameClick) {
-                        onCctvNameClick(c.id);
-                      }
+                      borderRadius: 4
                     }}
                   >
                     {c.name}
-                    {c.is_photo_slides && " 📸"}
                   </span>
                 </Tooltip>
                 <Popup>
