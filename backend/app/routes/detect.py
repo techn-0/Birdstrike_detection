@@ -179,3 +179,85 @@ async def detect_with_image(
     except Exception as exc:
         logger.error(f"Detection with image failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail="이미지 포함 탐지 결과 처리 실패")
+
+
+@router.post("/detect/airbirds", response_model=Result)
+async def detect_airbirds(detection_data: dict):
+    """AirBirds 형식 탐지 결과 처리"""
+    try:
+        from ..services.fov_service import FovService
+        from ..db import db
+        
+        # CCTV ID 추출
+        cctv_id = detection_data.get("image_name", "").split("_")[0] if detection_data.get("image_name") else "D02"
+        
+        # CCTV 메타데이터 조회
+        cctv_meta = await db.cctv.find_one({"id": cctv_id})
+        if not cctv_meta:
+            # 기본 CCTV 메타데이터 (테스트용)
+            cctv_meta = {
+                "id": cctv_id,
+                "lat": 37.4631,  # 인천공항 좌표
+                "lon": 126.4407,
+                "direction": 0,   # 동쪽 방향
+                "angle": 60,      # 60도 시야각
+                "length": 2       # 2km 거리
+            }
+        else:
+            # 데이터베이스 형식을 FovService가 기대하는 형식으로 변환
+            if "pos" in cctv_meta and isinstance(cctv_meta["pos"], list) and len(cctv_meta["pos"]) >= 2:
+                cctv_meta["lat"] = cctv_meta["pos"][0]
+                cctv_meta["lon"] = cctv_meta["pos"][1]
+            else:
+                # pos가 없거나 형식이 다르면 기본값 사용
+                cctv_meta["lat"] = 37.4631
+                cctv_meta["lon"] = 126.4407
+            
+            # 필수 필드들이 없으면 기본값 설정
+            if "direction" not in cctv_meta:
+                cctv_meta["direction"] = 0
+            if "angle" not in cctv_meta:
+                cctv_meta["angle"] = 60
+            if "length" not in cctv_meta:
+                cctv_meta["length"] = 2
+        
+        # AirBirds 탐지 결과를 지리적 좌표로 변환
+        geo_detections = FovService.process_airbirds_detection(detection_data, cctv_meta)
+        
+        # 변환된 결과를 기존 Detection 형식으로 저장
+        for geo_detection in geo_detections:
+            from datetime import datetime
+            import re
+            
+            # 타임스탬프 파싱 개선
+            timestamp_str = geo_detection["timestamp"]
+            try:
+                # Z를 제거하고 datetime 파싱
+                if timestamp_str.endswith("Z"):
+                    timestamp_str = timestamp_str[:-1] + "+00:00"
+                captured_at = datetime.fromisoformat(timestamp_str)
+            except Exception as dt_error:
+                logger.warning(f"Timestamp parsing failed: {dt_error}, using current time")
+                captured_at = datetime.now()
+            
+            detection = Detection(
+                cctv_id=geo_detection["cctv_id"],
+                bbox=[
+                    geo_detection["original_bbox"]["x1"],
+                    geo_detection["original_bbox"]["y1"],
+                    geo_detection["original_bbox"]["x2"] - geo_detection["original_bbox"]["x1"],
+                    geo_detection["original_bbox"]["y2"] - geo_detection["original_bbox"]["y1"]
+                ],
+                pos=geo_detection["pos"],
+                risk="yellow" if geo_detection["confidence"] > 0.3 else "green",
+                captured_at=captured_at,
+                frame_url=None  # AirBirds 데이터에는 이미지 URL이 없으므로 None
+            )
+            
+            await DetectionService.process_detection(detection)
+        
+        return Result(ok=True, message=f"{len(geo_detections)}개의 새 탐지 결과가 처리되었습니다.")
+        
+    except Exception as exc:
+        logger.error(f"AirBirds detection failed: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="AirBirds 탐지 결과 처리 실패")

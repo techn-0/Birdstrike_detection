@@ -55,6 +55,7 @@ class Detection(BaseModel):
 class Result(BaseModel):
     ok: bool
     error: Optional[str] = None
+    message: Optional[str] = None
 
 
 class CctvMeta(BaseModel):

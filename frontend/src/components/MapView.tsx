@@ -2,6 +2,7 @@ import React from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { CctvMeta } from "../types";
+import FOVIndicator from "./FOVIndicator";
 
 // 인천공항 실제 좌표 (위도, 경도)
 const INCHEON_AIRPORT_CENTER: [number, number] = [37.4631, 126.4407];
@@ -174,6 +175,40 @@ export default function MapView({
                 )}
               </Popup>
             </Marker>
+          );
+        })}
+
+        {/* AirBirds 탐지 결과 표시 - 실제 저장된 탐지 데이터 사용 */}
+        {cctvs.map((cctv) => {
+          // 해당 CCTV의 탐지 결과 필터링
+          const cctvDetections = detections.filter(det => det.cctv_id === cctv.id);
+          if (cctvDetections.length === 0) return null;
+          
+          // Detection 데이터를 ProcessedDetection 형식으로 변환
+          const processedDetections = cctvDetections.map(det => ({
+            cctv_id: det.cctv_id,
+            pos: det.pos, // [u, v] 상대좌표
+            class: "bird",
+            confidence: det.confidence || 0.5,
+            timestamp: det.captured_at,
+            original_bbox: {
+              x1: det.bbox[0],
+              y1: det.bbox[1], 
+              x2: det.bbox[0] + det.bbox[2],
+              y2: det.bbox[1] + det.bbox[3]
+            }
+          }));
+          
+          return (
+            <FOVIndicator
+              key={`fov-${cctv.id}`}
+              cameraLat={cctv.pos[0]}
+              cameraLon={cctv.pos[1]}
+              direction={cctv.direction}
+              angle={cctv.angle}
+              length={cctv.length}
+              detections={processedDetections}
+            />
           );
         })}
       </MapContainer>

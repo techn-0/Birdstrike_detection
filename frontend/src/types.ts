@@ -15,6 +15,40 @@ export interface CctvMeta {
   is_photo_slides?: boolean;      // 사진 슬라이드 활성화 여부
 }
 
+// AirBirds 탐지 결과 형식
+export interface AirBirdsDetection {
+  image_path: string;
+  image_name: string;
+  image_shape: [number, number];  // [height, width]
+  detections: Array<{
+    class_id: number;
+    class_name: string;
+    confidence: number;
+    bbox: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+    };
+  }>;
+}
+
+// 처리된 탐지 결과
+export interface ProcessedDetection {
+  cctv_id: string;
+  pos: [number, number];  // [u, v] 상대좌표
+  class: string;
+  confidence: number;
+  timestamp: string;
+  geo_pos?: [number, number];  // [lat, lon] 지리적 좌표
+  original_bbox: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  };
+}
+
 export interface Detection {
   cctv_id: string;
   bbox: number[];
