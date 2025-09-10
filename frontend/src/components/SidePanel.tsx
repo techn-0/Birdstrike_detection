@@ -54,15 +54,15 @@ export default function SidePanel({
         position: "fixed",
         top: "60px", // 상단바 높이만큼 아래로
         right: "0",
-        width: "340px",
+        width: "400px", // 340px에서 400px로 확장
         height: "calc(100vh - 60px)", // 전체 높이에서 상단바 높이 제외
-        background: "rgba(255,255,255,0.95)",
-        boxShadow: "-2px 0 12px rgba(0,0,0,0.1)",
+        background: "rgba(255, 255, 255, 0.95)", // 헤더와 동일한 투명도
+        backdropFilter: "blur(10px)", // 헤더와 동일한 블러
+        boxShadow: "-4px 0 25px rgba(0, 0, 0, 0.1)", // 더 부드러운 그림자
         borderLeft: "1px solid #e5e5e5",
         display: "flex",
         flexDirection: "column",
-        backdropFilter: "blur(4px)",
-        zIndex: 999, // 지도 위에 표시되도록
+        zIndex: 1000, // 헤더와 동일한 z-index
       }}
     >
       {/* CCTV 목록 - 스크롤 가능한 영역 */}
@@ -73,19 +73,39 @@ export default function SidePanel({
           padding: "24px 16px 0 16px",
         }}
       >
-        <h2 className="font-bold mb-4 text-lg text-blue-700">CCTV 목록</h2>
-        <ul className="mb-6">
+        <h2 style={{ 
+          margin: "0 0 20px 0", 
+          fontSize: "20px", 
+          fontWeight: "bold", 
+          color: "#2563eb" 
+        }}>
+          📡 CCTV 목록
+        </h2>
+        <ul style={{ marginBottom: "24px" }}>
           {cctvs.map(c => (
-            <li key={c.id} className="mb-3 pb-3 border-b border-gray-200">
+            <li key={c.id} style={{
+              marginBottom: "16px",
+              paddingBottom: "16px",
+              borderBottom: "1px solid #e5e7eb",
+              backgroundColor: "rgba(249, 250, 251, 0.5)",
+              padding: "16px",
+              borderRadius: "8px",
+              border: "1px solid rgba(229, 231, 235, 0.5)"
+            }}>
               <div>
                 <b
                   style={{
                     cursor: "pointer",
-                    color: c.color || "#007bff"
+                    color: c.color || "#2563eb",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    transition: "color 0.2s"
                   }}
                   onClick={() => onCctvNameClick && onCctvNameClick(c.id)}
+                  onMouseOver={(e) => e.currentTarget.style.color = "#1d4ed8"}
+                  onMouseOut={(e) => e.currentTarget.style.color = c.color || "#2563eb"}
                 >
-                  이름: {c.name}
+                  📹 {c.name}
                 </b>
                 <br />
                 <span className="text-sm text-gray-600"><b>ID:</b> {c.id}</span>
@@ -124,35 +144,73 @@ export default function SidePanel({
                   </>
                 )}
               </div>
-              <div className="mt-2">
+              <div style={{ marginTop: "12px" }}>
                 {c.is_photo_slides && (
                   <button 
-                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm mr-2 mb-2"
+                    style={{
+                      backgroundColor: "#10b981",
+                      color: "white",
+                      padding: "8px 16px",
+                      border: "none",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      cursor: "pointer",
+                      marginRight: "8px",
+                      marginBottom: "8px",
+                      transition: "background-color 0.2s"
+                    }}
                     onClick={() => onPhotoSlidesClick && onPhotoSlidesClick(c.id)}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#059669"}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#10b981"}
                   >
                     📸 포토 슬라이드 보기
                   </button>
                 )}
                 {isAdmin() && (
-                  <>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     <button 
-                      className="text-blue-500 hover:underline mr-3" 
+                      style={{
+                        backgroundColor: "#3b82f6",
+                        color: "white",
+                        padding: "6px 12px",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                        transition: "background-color 0.2s"
+                      }}
                       onClick={() => setForm({ 
                         ...c, 
                         posInput: c.pos.join(","),
                         sensorSizeInput: c.sensor_size ? c.sensor_size.join(",") : "",
                         resolutionInput: c.resolution ? c.resolution.join(",") : ""
                       })}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#2563eb"}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#3b82f6"}
                     >
-                      수정
+                      ✏️ 수정
                     </button>
                     <button 
-                      className="text-red-500 hover:underline" 
+                      style={{
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        padding: "6px 12px",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: "pointer",
+                        transition: "background-color 0.2s"
+                      }}
                       onClick={() => onDelete(c.id)}
+                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#dc2626"}
+                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#ef4444"}
                     >
-                      삭제
+                      🗑️ 삭제
                     </button>
-                  </>
+                  </div>
                 )}
                 {!user && (
                   <span className="text-gray-400 text-sm">로그인하면 관리 기능을 사용할 수 있습니다</span>
@@ -169,9 +227,10 @@ export default function SidePanel({
       {/* CCTV 추가/수정 폼 - 하단 고정 */}
       <div
         style={{
-          borderTop: "1px solid #e5e5e5",
-          padding: "16px",
-          background: "rgba(255,255,255,0.98)",
+          borderTop: "1px solid #e5e7eb",
+          padding: "20px",
+          background: "rgba(249, 250, 251, 0.95)",
+          backdropFilter: "blur(10px)",
           flexShrink: 0, // 크기 고정
           maxHeight: "50vh", // 최대 높이 제한
           overflowY: "auto", // 폼이 길어지면 스크롤
@@ -179,14 +238,30 @@ export default function SidePanel({
       >
         {isAdmin() ? (
           <>
-            <h3 className="font-bold mb-3 text-blue-700">CCTV 추가/수정</h3>
+            <h3 style={{ 
+              margin: "0 0 16px 0", 
+              fontSize: "18px", 
+              fontWeight: "600", 
+              color: "#2563eb" 
+            }}>
+              ⚙️ CCTV 관리
+            </h3>
             {mapClickMode && (
-              <div className="mb-3 p-2 bg-orange-100 border border-orange-300 rounded text-sm text-orange-700">
+              <div style={{
+                marginBottom: "16px",
+                padding: "12px",
+                backgroundColor: "rgba(251, 191, 36, 0.1)",
+                border: "1px solid rgba(251, 191, 36, 0.3)",
+                borderRadius: "8px",
+                fontSize: "14px",
+                color: "#92400e",
+                fontWeight: "500"
+              }}>
                 🗺️ 지도에서 CCTV를 설치할 위치를 클릭하세요
               </div>
             )}
             <form
-              className="flex flex-col gap-2"
+              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
               onSubmit={e => {
                 e.preventDefault();
                 const posArr = form.posInput?.split(",").map(Number) as [number, number] | undefined;
@@ -232,22 +307,42 @@ export default function SidePanel({
             onChange={e => setForm(f => ({ ...f, id: e.target.value }))}
             required
             readOnly={!!isEdit}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              backgroundColor: isEdit ? "#f9fafb" : "white",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="이름"
             value={form.name || ""}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             required
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
-          <div style={{ display: "flex", gap: "4px" }}>
+          <div style={{ display: "flex", gap: "8px" }}>
             <input
               placeholder="위치 (위도,경도, 예: 37.4631,126.4407)"
               value={form.posInput ?? ""}
               onChange={e => setForm(f => ({ ...f, posInput: e.target.value }))}
               required
-              className="border rounded px-2 py-1 flex-1"
+              style={{
+                border: "1px solid #d1d5db",
+                borderRadius: "6px",
+                padding: "10px 12px",
+                fontSize: "14px",
+                flex: 1,
+                transition: "border-color 0.2s"
+              }}
             />
             <button
               type="button"
@@ -255,13 +350,25 @@ export default function SidePanel({
                 onPendingCctvChange(form);
                 onMapClickModeChange(true);
               }}
-              className={`px-3 py-1 rounded text-sm transition ${
-                mapClickMode 
-                  ? "bg-orange-500 text-white" 
-                  : "bg-gray-200 hover:bg-gray-300"
-              }`}
+              style={{
+                padding: "10px 16px",
+                borderRadius: "6px",
+                fontSize: "13px",
+                fontWeight: "500",
+                border: "none",
+                cursor: "pointer",
+                transition: "background-color 0.2s",
+                backgroundColor: mapClickMode ? "#f59e0b" : "#6b7280",
+                color: "white"
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = mapClickMode ? "#d97706" : "#4b5563";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = mapClickMode ? "#f59e0b" : "#6b7280";
+              }}
             >
-              {mapClickMode ? "지도 클릭 대기중..." : "지도에서 선택"}
+              {mapClickMode ? "대기중..." : "🗺️ 지도 선택"}
             </button>
           </div>
           <input
@@ -270,7 +377,13 @@ export default function SidePanel({
             value={form.direction ?? ""}
             onChange={e => setForm(f => ({ ...f, direction: Number(e.target.value) }))}
             required
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="시야각(각도)"
@@ -278,7 +391,13 @@ export default function SidePanel({
             value={form.angle ?? ""}
             onChange={e => setForm(f => ({ ...f, angle: Number(e.target.value) }))}
             required
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="길이"
@@ -286,33 +405,63 @@ export default function SidePanel({
             value={form.length ?? ""}
             onChange={e => setForm(f => ({ ...f, length: Number(e.target.value) }))}
             required
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="센서 크기 (예: 36,24)"
             value={form.sensorSizeInput ?? ""}
             onChange={e => setForm(f => ({ ...f, sensorSizeInput: e.target.value }))}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="해상도 (예: 1920,1080)"
             value={form.resolutionInput ?? ""}
             onChange={e => setForm(f => ({ ...f, resolutionInput: e.target.value }))}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="초점거리 (mm)"
             type="number"
             value={form.focal_length ?? ""}
             onChange={e => setForm(f => ({ ...f, focal_length: Number(e.target.value) || undefined }))}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="센서 대각선 길이 (mm)"
             type="number"
             value={form.sensor_diagonal ?? ""}
             onChange={e => setForm(f => ({ ...f, sensor_diagonal: Number(e.target.value) || undefined }))}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="크롭팩터"
@@ -320,47 +469,120 @@ export default function SidePanel({
             step="0.1"
             value={form.crop_factor ?? ""}
             onChange={e => setForm(f => ({ ...f, crop_factor: Number(e.target.value) || undefined }))}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
           <input
             placeholder="모델명"
             value={form.model_name ?? ""}
             onChange={e => setForm(f => ({ ...f, model_name: e.target.value || undefined }))}
-            className="border rounded px-2 py-1"
+            style={{
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "10px 12px",
+              fontSize: "14px",
+              transition: "border-color 0.2s"
+            }}
           />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" }}>
             <input
               type="color"
-              value={form.color || "#007bff"}
+              value={form.color || "#2563eb"}
               onChange={e => setForm(f => ({ ...f, color: e.target.value }))}
-              style={{ width: 40, height: 30 }}
+              style={{ 
+                width: "40px", 
+                height: "40px", 
+                border: "1px solid #d1d5db", 
+                borderRadius: "6px",
+                cursor: "pointer"
+              }}
             />
-            <span className="text-sm">마커 색상</span>
+            <span style={{ fontSize: "14px", fontWeight: "500", color: "#374151" }}>마커 색상</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "8px" }}>
             <input
               type="checkbox"
               checked={form.is_photo_slides || false}
               onChange={e => setForm(f => ({ ...f, is_photo_slides: e.target.checked }))}
               id="photoSlidesCheck"
+              style={{ 
+                width: "18px", 
+                height: "18px",
+                cursor: "pointer"
+              }}
             />
-            <label htmlFor="photoSlidesCheck" className="text-sm">포토 슬라이드 활성화</label>
+            <label 
+              htmlFor="photoSlidesCheck" 
+              style={{ 
+                fontSize: "14px", 
+                fontWeight: "500", 
+                color: "#374151",
+                cursor: "pointer"
+              }}
+            >
+              📸 포토 슬라이드 활성화
+            </label>
           </div>
           <button 
             type="submit" 
-            className="bg-blue-500 hover:bg-blue-600 text-white py-2 mt-2 rounded transition"
+            style={{
+              backgroundColor: "#2563eb",
+              color: "white",
+              padding: "12px 24px",
+              border: "none",
+              borderRadius: "6px",
+              fontSize: "16px",
+              fontWeight: "600",
+              cursor: "pointer",
+              marginTop: "16px",
+              transition: "background-color 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#1d4ed8"}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#2563eb"}
           >
-            저장
+            💾 저장
           </button>
         </form>
           </>
         ) : (
-          <div className="p-4 bg-gray-100 rounded-lg text-center">
-            <h3 className="font-bold mb-2 text-gray-600">CCTV 관리</h3>
+          <div style={{
+            padding: "20px",
+            backgroundColor: "rgba(249, 250, 251, 0.8)",
+            borderRadius: "8px",
+            textAlign: "center",
+            border: "1px solid #e5e7eb"
+          }}>
+            <h3 style={{ 
+              margin: "0 0 12px 0", 
+              fontSize: "16px", 
+              fontWeight: "600", 
+              color: "#6b7280" 
+            }}>
+              🔐 CCTV 관리
+            </h3>
             {!user ? (
-              <p className="text-sm text-gray-500">로그인하면 CCTV를 관리할 수 있습니다</p>
+              <p style={{ 
+                fontSize: "14px", 
+                color: "#6b7280", 
+                margin: 0,
+                lineHeight: 1.5
+              }}>
+                로그인하면 CCTV를 관리할 수 있습니다
+              </p>
             ) : (
-              <p className="text-sm text-gray-500">CCTV 추가/수정/삭제는 관리자만 가능합니다</p>
+              <p style={{ 
+                fontSize: "14px", 
+                color: "#6b7280", 
+                margin: 0,
+                lineHeight: 1.5
+              }}>
+                CCTV 추가/수정/삭제는 관리자만 가능합니다
+              </p>
             )}
           </div>
         )}
