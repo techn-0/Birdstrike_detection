@@ -63,7 +63,7 @@ export function computeWorldOffset(
   direction: number
 ): [number, number] {
   const angleOffset = (u - 0.5) * fovAngle;
-  const distance = v * fovLength * 1000; // km를 m로 변환
+  const distance = v * fovLength;
   
   const actualBearing = direction + angleOffset;
   const radians = (actualBearing * Math.PI) / 180;

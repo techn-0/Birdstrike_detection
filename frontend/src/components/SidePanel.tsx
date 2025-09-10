@@ -118,7 +118,7 @@ export default function SidePanel({
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 위치: {c.pos[0].toFixed(4)}, {c.pos[1].toFixed(4)}<br />
-                방향: {c.direction}°, 시야각: {c.angle}°, 길이: {c.length}km
+                방향: {c.direction}°, 시야각: {c.angle}°, 탐지거리: {c.length}m
                 {c.resolution && (
                   <>
                     <br />
@@ -400,7 +400,7 @@ export default function SidePanel({
             }}
           />
           <input
-            placeholder="길이"
+            placeholder="탐지 거리 (미터, 예: 200)"
             type="number"
             value={form.length ?? ""}
             onChange={e => setForm(f => ({ ...f, length: Number(e.target.value) }))}

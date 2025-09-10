@@ -93,7 +93,7 @@ export default function MapView({
           const center: [number, number] = [c.pos[0], c.pos[1]];
           
           // FOV 계산을 위한 거리(미터 단위)
-          const distance = c.length * 1000; // km를 m로 변환
+          const distance = c.length; // length는 이미 미터 단위
           const half = c.angle / 2;
           const rad1 = deg2rad(c.direction - half);
           const rad2 = deg2rad(c.direction + half);
