@@ -353,3 +353,4 @@ data/
 WiredTiger
 WiredTiger.*
 WiredTigerLog.*
+/backend/app/static/frames
