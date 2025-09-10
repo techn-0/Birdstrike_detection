@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { CctvMeta, Detection } from "./types";
 import DetectionModal from "./components/DetectionModal";
+import PhotoSlidesModal from "./components/PhotoSlidesModal";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const API = process.env.REACT_APP_API_HTTP || 'http://localhost:8000';
@@ -15,6 +16,7 @@ function App() {
   const [selectedCctvId, setSelectedCctvId] = useState<string | null>(null);
   const [mapClickMode, setMapClickMode] = useState(false);
   const [pendingCctv, setPendingCctv] = useState<Partial<CctvMeta> | null>(null);
+  const [photoSlidesCctvId, setPhotoSlidesCctvId] = useState<string | null>(null);
 
   // CCTV 목록 불러오기
   useEffect(() => {
@@ -122,6 +124,19 @@ function App() {
 
   // 모달 닫기 함수
   const closeModal = () => setSelectedCctvId(null);
+  
+  // 포토 슬라이드 모달 닫기
+  const closePhotoSlidesModal = () => setPhotoSlidesCctvId(null);
+
+  // CCTV 이름 클릭 핸들러
+  const handleCctvNameClick = (cctvId: string) => {
+    const cctv = cctvs.find(c => c.id === cctvId);
+    if (cctv?.is_photo_slides) {
+      setPhotoSlidesCctvId(cctvId);
+    } else {
+      setSelectedCctvId(cctvId);
+    }
+  };
 
   // 지도 클릭으로 CCTV 위치 설정
   const handleMapClick = (lat: number, lng: number) => {
@@ -150,6 +165,7 @@ function App() {
             detections={dets}
             onCctvClick={setSelectedCctvId}
             onMapClick={handleMapClick}
+            onCctvNameClick={handleCctvNameClick}
           />
         </div>
       </div>
@@ -160,7 +176,7 @@ function App() {
         onAddOrUpdate={addOrUpdateCctv}
         onDelete={deleteCctv}
         detections={dets}
-        onCctvNameClick={setSelectedCctvId}
+        onCctvNameClick={handleCctvNameClick}
         mapClickMode={mapClickMode}
         onMapClickModeChange={setMapClickMode}
         pendingCctv={pendingCctv}
@@ -173,6 +189,16 @@ function App() {
           cctv={cctvs.find((c) => c.id === selectedCctvId)!}
           detections={dets.filter((d) => d.cctv_id === selectedCctvId)}
           onClose={closeModal}
+        />
+      )}
+
+      {/* 포토 슬라이드 모달 */}
+      {photoSlidesCctvId && (
+        <PhotoSlidesModal
+          isOpen={true}
+          onClose={closePhotoSlidesModal}
+          cctvId={photoSlidesCctvId}
+          cctvName={cctvs.find(c => c.id === photoSlidesCctvId)?.name || photoSlidesCctvId}
         />
       )}
     </div>

@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import detect, cctv, ws_route
+from .routes import detect, cctv, ws_route, photo_slides
 from .routers import auth
 from .storage import init_storage
 import logging
@@ -34,9 +34,11 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(detect.router)
 app.include_router(cctv.router)
 app.include_router(ws_route.router)
+app.include_router(photo_slides.router, prefix="/api")
 
 # 정적 파일 서빙
 app.mount("/frames", StaticFiles(directory="app/static/frames"), name="frames")
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/ping")
 async def health_check():

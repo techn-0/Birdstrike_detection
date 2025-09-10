@@ -354,3 +354,7 @@ WiredTiger
 WiredTiger.*
 WiredTigerLog.*
 /backend/app/static/frames
+/DATASET(AirBirds)_Predict
+/DATASET(AirBirds)_Predict_original
+/backend/app/static/DATASET(AirBirds)_Predict
+/backend/app/static/DATASET(AirBirds)_Predict_original

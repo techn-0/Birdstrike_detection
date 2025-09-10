@@ -25,11 +25,13 @@ export default function MapView({
   detections,
   onCctvClick,
   onMapClick,
+  onCctvNameClick,
 }: {
   cctvs: CctvMeta[];
   detections: any[];
   onCctvClick?: (cctvId: string) => void;
   onMapClick?: (lat: number, lng: number) => void;
+  onCctvNameClick?: (cctvId: string) => void;
 }) {
   const deg2rad = (deg: number) => (deg * Math.PI) / 180;
 
@@ -120,8 +122,24 @@ export default function MapView({
                 }}
               >
                 <Tooltip direction="bottom" offset={[0, 12]} permanent>
-                  <span style={{ color: "#222", fontWeight: "bold", background: "#fff8", padding: "2px 6px", borderRadius: 4 }}>
+                  <span 
+                    style={{ 
+                      color: "#222", 
+                      fontWeight: "bold", 
+                      background: "#fff8", 
+                      padding: "2px 6px", 
+                      borderRadius: 4,
+                      cursor: c.is_photo_slides ? "pointer" : "default"
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (c.is_photo_slides && onCctvNameClick) {
+                        onCctvNameClick(c.id);
+                      }
+                    }}
+                  >
                     {c.name}
+                    {c.is_photo_slides && " 📸"}
                   </span>
                 </Tooltip>
                 <Popup>

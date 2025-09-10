@@ -71,3 +71,4 @@ class CctvMeta(BaseModel):
     sensor_diagonal: Optional[float] = None    # 센서 대각선 길이 (mm)
     crop_factor: Optional[float] = None        # 크롭팩터
     model_name: Optional[str] = None           # 모델명
+    is_photo_slides: bool = False              # 사진 슬라이드 활성화 여부

@@ -115,6 +115,12 @@ export default function SidePanel({
                     초점거리: {c.focal_length}mm
                   </>
                 )}
+                {c.is_photo_slides && (
+                  <>
+                    <br />
+                    <span className="text-green-600 font-semibold">📸 포토 슬라이드 활성화</span>
+                  </>
+                )}
               </div>
               <div className="mt-2">
                 {isAdmin() && (
@@ -200,7 +206,8 @@ export default function SidePanel({
                     focal_length: form.focal_length,
                     sensor_diagonal: form.sensor_diagonal,
                     crop_factor: form.crop_factor,
-                    model_name: form.model_name
+                    model_name: form.model_name,
+                    is_photo_slides: form.is_photo_slides || false
                   });
                   setForm({});
                   onPendingCctvChange(null);
@@ -319,6 +326,15 @@ export default function SidePanel({
               style={{ width: 40, height: 30 }}
             />
             <span className="text-sm">마커 색상</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={form.is_photo_slides || false}
+              onChange={e => setForm(f => ({ ...f, is_photo_slides: e.target.checked }))}
+              id="photoSlidesCheck"
+            />
+            <label htmlFor="photoSlidesCheck" className="text-sm">포토 슬라이드 활성화</label>
           </div>
           <button 
             type="submit" 

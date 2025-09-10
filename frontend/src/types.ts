@@ -12,6 +12,7 @@ export interface CctvMeta {
   sensor_diagonal?: number;       // 센서 대각선 길이 (mm)
   crop_factor?: number;           // 크롭팩터
   model_name?: string;            // 모델명
+  is_photo_slides?: boolean;      // 사진 슬라이드 활성화 여부
 }
 
 export interface Detection {
@@ -56,4 +57,29 @@ export interface DetectionCSV {
   center_y: number;
   cctv_id?: string;
   captured_at?: string;
+}
+
+// 포토 슬라이드 관련 타입들
+export interface PhotoSlideImage {
+  image_name: string;
+  image_url: string;
+  labels: DetectionLabel[];
+  max_confidence: number;
+  detection_count: number;
+}
+
+export interface DetectionLabel {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  confidence: number;
+  class_name: string;
+}
+
+export interface PhotoSlidesData {
+  cctv_id: string;
+  total_images: number;
+  confidence_threshold: number;
+  images: PhotoSlideImage[];
 }
