@@ -95,22 +95,31 @@ export default function MapView({
           // FOV 계산을 위한 거리(미터 단위)
           const distance = c.length; // length는 이미 미터 단위
           const half = c.angle / 2;
-          const rad1 = deg2rad(c.direction - half);
-          const rad2 = deg2rad(c.direction + half);
           
           // 위도/경도에서 거리 계산 (간단한 근사)
           const latOffset = (distance / 111320); // 1도 = 약 111,320m
           const lngOffset = (distance / (111320 * Math.cos(deg2rad(center[0]))));
           
-          const left: [number, number] = [
-            center[0] + latOffset * Math.cos(rad1),
-            center[1] + lngOffset * Math.sin(rad1),
-          ];
-          const right: [number, number] = [
-            center[0] + latOffset * Math.cos(rad2),
-            center[1] + lngOffset * Math.sin(rad2),
-          ];
-          const polyCoords = [center, left, right];
+          // 부채꼴 형태의 FOV를 위한 점들 생성
+          const arcPoints: [number, number][] = [center]; // 중심점에서 시작
+          
+          // 각도 범위에 따라 호를 그리기 위한 점들 생성
+          const numPoints = Math.max(8, Math.floor(c.angle / 5)); // 각도에 비례하여 점 개수 결정 (최소 8개)
+          const angleStep = c.angle / numPoints;
+          
+          for (let i = 0; i <= numPoints; i++) {
+            const currentAngle = c.direction - half + (angleStep * i);
+            const rad = deg2rad(currentAngle);
+            const point: [number, number] = [
+              center[0] + latOffset * Math.cos(rad),
+              center[1] + lngOffset * Math.sin(rad),
+            ];
+            arcPoints.push(point);
+          }
+          
+          // 마지막에 중심점으로 돌아와서 부채꼴 완성
+          arcPoints.push(center);
+          
           const color = c.color || "#007bff";
 
           return (
@@ -140,7 +149,7 @@ export default function MapView({
                 </Popup>
               </Marker>
               <Polygon
-                positions={polyCoords}
+                positions={arcPoints}
                 pathOptions={{
                   color: color,
                   weight: 2,
