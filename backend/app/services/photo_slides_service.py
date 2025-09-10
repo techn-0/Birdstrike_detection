@@ -71,8 +71,14 @@ class PhotoSlidesService:
                             'detection_count': len(labels)
                         })
             
-            # 이미지를 신뢰도 순으로 정렬 (높은 순)
-            filtered_images.sort(key=lambda x: x['max_confidence'], reverse=True)
+            # 이미지를 파일 이름의 숫자 순으로 정렬
+            import re
+            def extract_number(image_name):
+                # 파일 이름에서 마지막 숫자 추출 (예: D02_20210721142744_0007999 → 7999)
+                match = re.search(r'_(\d+)$', image_name)
+                return int(match.group(1)) if match else 0
+            
+            filtered_images.sort(key=lambda x: extract_number(x['image_name']))
             
             return {
                 'cctv_id': cctv_id,
