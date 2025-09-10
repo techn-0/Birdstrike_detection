@@ -239,7 +239,10 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
                 max="1"
                 step="0.1"
                 value={confidenceThreshold}
-                onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
+                onChange={(e) => {
+                  setLoading(true); // 즉시 로딩 상태 시작
+                  setConfidenceThreshold(Number(e.target.value));
+                }}
                 style={{ width: "80px" }}
               />
               <span style={{
@@ -407,7 +410,7 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
             </div>
           )}
 
-          {data && data.images.length > 0 && (
+          {data && data.images.length > 0 && !loading && (
             <div style={{
               display: "flex",
               flexDirection: "column",
