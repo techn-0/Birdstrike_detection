@@ -23,6 +23,53 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // 이미지에 라벨 그리기
+  const drawLabelsOnCanvas = useCallback((image: PhotoSlideImage, imgElement: HTMLImageElement) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !showLabels || !imgElement) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 이미지의 실제 표시 크기 계산
+    const rect = imgElement.getBoundingClientRect();
+    const scaleX = rect.width / imgElement.naturalWidth;
+    const scaleY = rect.height / imgElement.naturalHeight;
+
+    // 캔버스 크기를 표시되는 이미지 크기에 맞춤
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // 캔버스 초기화
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 라벨 그리기 (스케일 적용)
+    image.labels.forEach((label: DetectionLabel) => {
+      const { x1, y1, x2, y2, confidence, class_name } = label;
+      
+      // 좌표를 표시 크기에 맞게 스케일링
+      const scaledX1 = x1 * scaleX;
+      const scaledY1 = y1 * scaleY;
+      const scaledX2 = x2 * scaleX;
+      const scaledY2 = y2 * scaleY;
+      
+      // 바운딩 박스 그리기
+      ctx.strokeStyle = confidence >= 0.7 ? '#ff0000' : confidence >= 0.5 ? '#ff8800' : '#ffff00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(scaledX1, scaledY1, scaledX2 - scaledX1, scaledY2 - scaledY1);
+
+      // 라벨 텍스트 배경
+      const textHeight = 20;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(scaledX1, scaledY1 - textHeight, 120, textHeight);
+
+      // 라벨 텍스트
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px Arial';
+      ctx.fillText(`${class_name} ${(confidence * 100).toFixed(1)}%`, scaledX1 + 3, scaledY1 - 5);
+    });
+  }, [showLabels]);
+
   const loadPhotoSlidesData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -77,73 +124,115 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
     };
   }, []);
 
-  // 이미지에 라벨 그리기
-  const drawLabelsOnCanvas = (image: PhotoSlideImage, imgElement: HTMLImageElement) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !showLabels) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // 캔버스 크기를 이미지 크기에 맞춤
-    canvas.width = imgElement.naturalWidth;
-    canvas.height = imgElement.naturalHeight;
-
-    // 이미지 그리기
-    ctx.drawImage(imgElement, 0, 0);
-
-    // 라벨 그리기
-    image.labels.forEach((label: DetectionLabel) => {
-      const { x1, y1, x2, y2, confidence, class_name } = label;
-      
-      // 바운딩 박스 그리기
-      ctx.strokeStyle = confidence >= 0.7 ? '#ff0000' : confidence >= 0.5 ? '#ff8800' : '#ffff00';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-
-      // 라벨 텍스트 배경
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(x1, y1 - 25, 120, 25);
-
-      // 라벨 텍스트
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '14px Arial';
-      ctx.fillText(`${class_name} ${(confidence * 100).toFixed(1)}%`, x1 + 5, y1 - 8);
-    });
-  };
+  // 라벨 표시 상태나 현재 인덱스가 변경될 때 캔버스 다시 그리기
+  useEffect(() => {
+    if (data && data.images[currentIndex]) {
+      const imgElement = document.querySelector(`img[alt="${data.images[currentIndex].image_name}"]`) as HTMLImageElement;
+      if (imgElement && imgElement.complete) {
+        drawLabelsOnCanvas(data.images[currentIndex], imgElement);
+      }
+    }
+  }, [showLabels, currentIndex, data, drawLabelsOnCanvas]);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    if (data && data.images[currentIndex]) {
-      drawLabelsOnCanvas(data.images[currentIndex], e.currentTarget);
+    const imgElement = e.currentTarget;
+    if (data && data.images[currentIndex] && showLabels) {
+      // 이미지 로드 후 약간의 지연을 두고 라벨 그리기
+      setTimeout(() => {
+        drawLabelsOnCanvas(data.images[currentIndex], imgElement);
+      }, 100);
     }
   };
 
   if (!isOpen) return null;
 
+  console.log('PhotoSlidesModal 렌더링:', { isOpen, cctvId, cctvName });
+
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 99999
+      }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-lg max-w-6xl max-h-[95vh] w-full mx-4 flex flex-col">
+      <div style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "12px",
+        maxWidth: "90vw",
+        maxHeight: "95vh",
+        width: "1200px",
+        margin: "0 16px",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+        border: "2px solid #374151",
+        position: "relative"
+      }}>
         {/* 헤더 */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-800">
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 24px",
+          borderBottom: "2px solid #e5e5e5",
+          backgroundColor: "#ffffff",
+          borderRadius: "12px 12px 0 0"
+        }}>
+          <h2 style={{
+            margin: 0,
+            fontSize: "20px",
+            fontWeight: "bold",
+            color: "#2563eb"
+          }}>
             📸 {cctvName} - 포토 슬라이드
           </h2>
           <button 
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "24px",
+              color: "#6b7280",
+              cursor: "pointer",
+              padding: "4px 8px",
+              borderRadius: "6px",
+              transition: "all 0.2s"
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.color = "#374151";
+              e.currentTarget.style.backgroundColor = "#f3f4f6";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.color = "#6b7280";
+              e.currentTarget.style.backgroundColor = "transparent";
+            }}
           >
             ×
           </button>
         </div>
 
         {/* 컨트롤 패널 */}
-        <div className="p-4 border-b bg-gray-50">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2">
-              <label className="text-sm">신뢰도 임계값:</label>
+        <div style={{
+          padding: "16px 24px",
+          borderBottom: "1px solid #e5e5e5",
+          backgroundColor: "#f9fafb"
+        }}>
+          <div style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "16px",
+            alignItems: "center"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label style={{ fontSize: "14px", fontWeight: "500", color: "#374151" }}>
+                신뢰도 임계값:
+              </label>
               <input
                 type="range"
                 min="0"
@@ -151,17 +240,32 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
                 step="0.1"
                 value={confidenceThreshold}
                 onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
-                className="w-20"
+                style={{ width: "80px" }}
               />
-              <span className="text-sm w-12">{(confidenceThreshold * 100).toFixed(0)}%</span>
+              <span style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "#2563eb",
+                minWidth: "36px"
+              }}>
+                {(confidenceThreshold * 100).toFixed(0)}%
+              </span>
             </div>
             
-            <div className="flex items-center gap-2">
-              <label className="text-sm">속도:</label>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label style={{ fontSize: "14px", fontWeight: "500", color: "#374151" }}>
+                속도:
+              </label>
               <select 
                 value={speed} 
                 onChange={(e) => setSpeed(Number(e.target.value))}
-                className="border rounded px-2 py-1 text-sm"
+                style={{
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  padding: "4px 8px",
+                  fontSize: "14px",
+                  backgroundColor: "white"
+                }}
               >
                 <option value={2000}>느림 (2초)</option>
                 <option value={1000}>보통 (1초)</option>
@@ -170,29 +274,62 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <input
                 type="checkbox"
                 checked={showLabels}
                 onChange={(e) => setShowLabels(e.target.checked)}
                 id="showLabels"
+                style={{ marginRight: "4px" }}
               />
-              <label htmlFor="showLabels" className="text-sm">라벨 표시</label>
+              <label htmlFor="showLabels" style={{ fontSize: "14px", fontWeight: "500", color: "#374151" }}>
+                라벨 표시
+              </label>
             </div>
 
-            <div className="flex gap-2">
+            <div style={{ display: "flex", gap: "8px" }}>
               <button
                 onClick={() => setIsPlaying(!isPlaying)}
-                className={`px-4 py-2 rounded text-sm ${
-                  isPlaying ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-green-500 hover:bg-green-600 text-white'
-                }`}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: "none",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  backgroundColor: isPlaying ? "#ef4444" : "#22c55e",
+                  color: "white"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = isPlaying ? "#dc2626" : "#16a34a";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = isPlaying ? "#ef4444" : "#22c55e";
+                }}
               >
                 {isPlaying ? '⏸ 일시정지' : '▶ 재생'}
               </button>
               
               <button
                 onClick={() => setCurrentIndex(0)}
-                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#6b7280",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = "#4b5563";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = "#6b7280";
+                }}
               >
                 ⏮ 처음
               </button>
@@ -200,7 +337,11 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
           </div>
 
           {data && (
-            <div className="mt-2 text-sm text-gray-600">
+            <div style={{
+              marginTop: "12px",
+              fontSize: "14px",
+              color: "#6b7280"
+            }}>
               총 {data.total_images}개 이미지 | 현재: {currentIndex + 1}/{data.images.length} | 
               신뢰도 {(confidenceThreshold * 100).toFixed(0)}% 이상
             </div>
@@ -208,37 +349,93 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
         </div>
 
         {/* 메인 콘텐츠 */}
-        <div className="flex-1 p-4 overflow-auto">
+        <div style={{
+          flex: 1,
+          padding: "24px",
+          overflowY: "auto",
+          backgroundColor: "#ffffff",
+          borderRadius: "0 0 12px 12px"
+        }}>
           {loading && (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">데이터를 불러오는 중...</div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "300px"
+            }}>
+              <div style={{
+                color: "#6b7280",
+                fontSize: "16px",
+                fontWeight: "500"
+              }}>
+                데이터를 불러오는 중...
+              </div>
             </div>
           )}
 
           {error && (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-red-500">{error}</div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "300px"
+            }}>
+              <div style={{
+                color: "#ef4444",
+                fontSize: "16px",
+                fontWeight: "500"
+              }}>
+                {error}
+              </div>
             </div>
           )}
 
           {data && data.images.length === 0 && (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-gray-500">
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "300px"
+            }}>
+              <div style={{
+                color: "#6b7280",
+                fontSize: "16px",
+                fontWeight: "500"
+              }}>
                 신뢰도 {(confidenceThreshold * 100).toFixed(0)}% 이상의 이미지가 없습니다.
               </div>
             </div>
           )}
 
           {data && data.images.length > 0 && (
-            <div className="flex flex-col items-center">
-              <div className="relative inline-block">
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center"
+            }}>
+              <div style={{
+                position: "relative",
+                display: "inline-block",
+                border: "2px solid #e5e7eb",
+                borderRadius: "12px",
+                overflow: "hidden",
+                boxShadow: "0 10px 25px -3px rgba(0, 0, 0, 0.1)"
+              }}>
                 <img
                   src={`${API}${data.images[currentIndex].image_url}`}
                   alt={data.images[currentIndex].image_name}
-                  className="max-w-full max-h-[60vh] object-contain border rounded"
-                  onLoad={handleImageLoad}
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "60vh",
+                    display: "block"
+                  }}
+                  onLoad={(e) => {
+                    console.log('이미지 로드 성공:', `${API}${data.images[currentIndex].image_url}`);
+                    handleImageLoad(e);
+                  }}
                   onError={(e) => {
-                    console.error('이미지 로드 실패:', e);
+                    console.error('이미지 로드 실패:', `${API}${data.images[currentIndex].image_url}`);
+                    console.error('Error details:', e);
                     setError('이미지를 불러올 수 없습니다.');
                   }}
                 />
@@ -246,33 +443,102 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
                 {showLabels && (
                   <canvas 
                     ref={canvasRef}
-                    className="absolute top-0 left-0 max-w-full max-h-[60vh] object-contain pointer-events-none"
-                    style={{ zIndex: 1 }}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      maxWidth: "100%",
+                      maxHeight: "60vh",
+                      pointerEvents: "none",
+                      zIndex: 1
+                    }}
                   />
                 )}
               </div>
 
-              <div className="mt-4 text-center">
-                <h3 className="text-lg font-semibold">{data.images[currentIndex].image_name}</h3>
-                <p className="text-sm text-gray-600">
-                  최대 신뢰도: {(data.images[currentIndex].max_confidence * 100).toFixed(1)}% | 
-                  탐지 개수: {data.images[currentIndex].detection_count}개
+              <div style={{
+                marginTop: "20px",
+                textAlign: "center"
+              }}>
+                <h3 style={{
+                  fontSize: "18px",
+                  fontWeight: "600",
+                  color: "#1f2937",
+                  margin: "0 0 8px 0"
+                }}>
+                  {data.images[currentIndex].image_name}
+                </h3>
+                <p style={{
+                  fontSize: "14px",
+                  color: "#6b7280",
+                  margin: 0
+                }}>
+                  최대 신뢰도: <span style={{ fontWeight: "600", color: "#2563eb" }}>
+                    {(data.images[currentIndex].max_confidence * 100).toFixed(1)}%
+                  </span> | 
+                  탐지 개수: <span style={{ fontWeight: "600", color: "#16a34a" }}>
+                    {data.images[currentIndex].detection_count}개
+                  </span>
                 </p>
               </div>
 
               {/* 이미지 네비게이션 */}
-              <div className="flex gap-2 mt-4">
+              <div style={{
+                display: "flex",
+                gap: "12px",
+                marginTop: "20px"
+              }}>
                 <button
                   onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
                   disabled={currentIndex === 0}
-                  className="px-3 py-1 bg-gray-300 hover:bg-gray-400 rounded text-sm disabled:opacity-50"
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: currentIndex === 0 ? "#e5e7eb" : "#3b82f6",
+                    color: currentIndex === 0 ? "#9ca3af" : "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: currentIndex === 0 ? "not-allowed" : "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseOver={(e) => {
+                    if (currentIndex !== 0) {
+                      e.currentTarget.style.backgroundColor = "#2563eb";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (currentIndex !== 0) {
+                      e.currentTarget.style.backgroundColor = "#3b82f6";
+                    }
+                  }}
                 >
                   ← 이전
                 </button>
                 <button
                   onClick={() => setCurrentIndex(prev => Math.min(data.images.length - 1, prev + 1))}
                   disabled={currentIndex === data.images.length - 1}
-                  className="px-3 py-1 bg-gray-300 hover:bg-gray-400 rounded text-sm disabled:opacity-50"
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: currentIndex === data.images.length - 1 ? "#e5e7eb" : "#3b82f6",
+                    color: currentIndex === data.images.length - 1 ? "#9ca3af" : "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    cursor: currentIndex === data.images.length - 1 ? "not-allowed" : "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseOver={(e) => {
+                    if (currentIndex !== data.images.length - 1) {
+                      e.currentTarget.style.backgroundColor = "#2563eb";
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (currentIndex !== data.images.length - 1) {
+                      e.currentTarget.style.backgroundColor = "#3b82f6";
+                    }
+                  }}
                 >
                   다음 →
                 </button>
