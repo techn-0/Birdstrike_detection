@@ -81,7 +81,7 @@ class BirdDetectionAPI:
     
     def calculate_risk(self, confidence: float) -> str:
         """
-        신뢰도 기반 위험도 계산
+        신뢰도 기반 위험도 계산 (새로운 기준)
         
         Args:
             confidence: 탐지 신뢰도 (0.0 ~ 1.0)
@@ -89,14 +89,11 @@ class BirdDetectionAPI:
         Returns:
             위험도 ("red", "orange", "yellow", "green")
         """
-        if confidence >= 0.8:
-            return "red"
-        elif confidence >= 0.6:
-            return "orange"
-        elif confidence >= 0.4:
-            return "yellow"
+        # 1개 객체 탐지 기준으로 위험도 계산
+        if confidence < 0.30:  # 30% 미만
+            return "yellow"  # 모니터링 대상
         else:
-            return "green"
+            return "orange"  # 주의 필요
     
     def send_detection(self, 
                       cctv_id: str,

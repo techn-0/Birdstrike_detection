@@ -133,15 +133,12 @@ def send_detection_result(self, detection_data):
     return response.status_code == 200
 
 def get_risk_level(self, confidence):
-    """신뢰도 기반 위험도 설정"""
-    if confidence >= 0.8:
-        return "red"      # 즉시 경보
-    elif confidence >= 0.6:
-        return "orange"   # 주의 필요
-    elif confidence >= 0.4:
-        return "yellow"   # 모니터링
+    """신뢰도 기반 위험도 설정 (새로운 기준)"""
+    # 1개 객체 탐지 기준으로 계산
+    if confidence < 0.30:  # 30% 미만
+        return "yellow"  # 모니터링 대상
     else:
-        return "green"    # 참고용
+        return "orange"  # 주의 필요
 ```
 
 ### 배치 처리 결과 전송

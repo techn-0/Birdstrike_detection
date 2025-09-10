@@ -32,14 +32,11 @@ class Detection(BaseModel):
     
     @property
     def risk(self) -> str:
-        if self.confidence >= 0.8:
-            return "red"
-        elif self.confidence >= 0.6:
-            return "orange"
-        elif self.confidence >= 0.4:
-            return "yellow"
+        # 새로운 위험도 계산 기준 적용
+        if self.confidence < 0.30:  # 30% 미만
+            return "yellow"  # 모니터링 대상
         else:
-            return "green"
+            return "orange"  # 주의 필요
 
 # 다중 탐지 결과
 class DetectionBatch(BaseModel):

@@ -144,16 +144,12 @@ class CSVDetectionTester:
         # 중심점 [center_x, center_y]
         pos = [csv_detection['center_x'], csv_detection['center_y']]
         
-        # 신뢰도 기반 위험도 설정
+        # 새로운 위험도 기준 적용 (1개 객체 기준)
         confidence = csv_detection['confidence']
-        if confidence >= 0.8:
-            risk = "red"
-        elif confidence >= 0.6:
-            risk = "orange"
-        elif confidence >= 0.4:
-            risk = "yellow"
+        if confidence < 0.30:  # 30% 미만
+            risk = "yellow"  # 모니터링 대상
         else:
-            risk = "green"
+            risk = "orange"  # 주의 필요
         
         return {
             "cctv_id": cctv_id,

@@ -9,6 +9,25 @@ logger = logging.getLogger(__name__)
 
 class DetectionService:
     @staticmethod
+    def calculate_risk_by_count_and_confidence(bird_count: int, max_confidence: float = 0.0) -> str:
+        """
+        새로운 위험도 분류 기준:
+        - Green: 객체 탐지 안됨 (bird_count = 0)
+        - Yellow: 1개 객체 + confidence < 30%
+        - Orange: 1개 객체 + confidence ≥ 30%
+        - Red: 2개 이상의 조류 탐지
+        """
+        if bird_count == 0:
+            return "green"  # 미탐지
+        elif bird_count == 1:
+            if max_confidence < 0.30:  # 30% 미만
+                return "yellow"  # 모니터링 대상
+            else:
+                return "orange"  # 주의 필요
+        else:  # bird_count >= 2
+            return "red"  # 즉시 경보 필요
+
+    @staticmethod
     def csv_to_detection(csv_detection: DetectionCSV, cctv_id: str = None) -> Detection:
         """DetectionCSV를 Detection 모델로 변환"""
         # bbox 배열 형식 [x1, y1, x2, y2]
@@ -17,15 +36,11 @@ class DetectionService:
         # pos 배열 형식 [center_x, center_y]
         pos = [csv_detection.center_x, csv_detection.center_y]
         
-        # risk 계산 (confidence 기반)
-        if csv_detection.confidence >= 0.8:
-            risk = "red"
-        elif csv_detection.confidence >= 0.6:
-            risk = "orange"
-        elif csv_detection.confidence >= 0.4:
-            risk = "yellow"
-        else:
-            risk = "green"
+        # risk 계산 (새로운 기준 적용)
+        risk = DetectionService.calculate_risk_by_count_and_confidence(
+            bird_count=1, 
+            max_confidence=csv_detection.confidence
+        )
         
         # frame_url 생성
         frame_url = f"/frames/{csv_detection.image_name}" if csv_detection.image_name else None
@@ -34,7 +49,7 @@ class DetectionService:
         final_cctv_id = csv_detection.cctv_id or cctv_id or "unknown"
         
         # 시간 설정
-        captured_at = csv_detection.captured_at or datetime.now()
+        captured_at = csv_detection.captured_at or datetime.now() 
         
         return Detection(
             cctv_id=final_cctv_id,

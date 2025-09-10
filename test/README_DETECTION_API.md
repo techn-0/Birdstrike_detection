@@ -181,25 +181,26 @@ detections = response.json()
 
 ## ⚠️ 위험도 자동 분류
 
-신뢰도(confidence)에 따라 위험도가 자동으로 설정됩니다:
+새로운 조류 수량과 신뢰도 기반 위험도 분류:
 
-| 신뢰도 범위 | 위험도 | 색상 | 의미 |
-|-------------|--------|------|------|
-| 0.8 ~ 1.0 | `red` | 🔴 | 고위험 (즉시 경보) |
-| 0.6 ~ 0.8 | `orange` | 🟠 | 중위험 (주의 필요) |
-| 0.4 ~ 0.6 | `yellow` | 🟡 | 저위험 (모니터링) |
-| 0.0 ~ 0.4 | `green` | 🟢 | 매우 저위험 (참고용) |
+| 조건 | 위험도 | 색상 | 의미 |
+|------|--------|------|------|
+| 조류 미탐지 (count = 0) | `green` | � | 정상 상태 |
+| 1개 조류 + 신뢰도 < 30% | `yellow` | � | 모니터링 대상 |
+| 1개 조류 + 신뢰도 ≥ 30% | `orange` | � | 주의 필요 |
+| 2개 이상 조류 탐지 | `red` | � | 즉시 경보 필요 |
 
 ```python
-def get_risk_level(confidence: float) -> str:
-    if confidence >= 0.8:
-        return "red"
-    elif confidence >= 0.6:
-        return "orange"
-    elif confidence >= 0.4:
-        return "yellow"
-    else:
-        return "green"
+def calculate_risk_by_count_and_confidence(bird_count: int, max_confidence: float = 0.0) -> str:
+    if bird_count == 0:
+        return "green"  # 미탐지
+    elif bird_count == 1:
+        if max_confidence < 0.30:  # 30% 미만
+            return "yellow"  # 모니터링 대상
+        else:
+            return "orange"  # 주의 필요
+    else:  # bird_count >= 2
+        return "red"  # 즉시 경보 필요
 ```
 
 ## 🔧 실제 모델 통합 예시
@@ -257,15 +258,12 @@ class BirdDetectionAPI:
         return None
     
     def calculate_risk(self, confidence):
-        """신뢰도 기반 위험도 계산"""
-        if confidence >= 0.8:
-            return "red"
-        elif confidence >= 0.6:
-            return "orange"
-        elif confidence >= 0.4:
-            return "yellow"
+        """신뢰도 기반 위험도 계산 (새로운 기준)"""
+        # 1개 객체 탐지 기준으로 계산
+        if confidence < 0.30:  # 30% 미만
+            return "yellow"  # 모니터링 대상
         else:
-            return "green"
+            return "orange"  # 주의 필요
 
 # 사용 예시
 api = BirdDetectionAPI()
