@@ -331,7 +331,7 @@ export default function SidePanel({
           />
           <div style={{ display: "flex", gap: "8px" }}>
             <input
-              placeholder="위치 (위도,경도, 예: 37.4631,126.4407)"
+              placeholder="위치 (위도,경도, 예: 34.8423,127.6169)"
               value={form.posInput ?? ""}
               onChange={e => setForm(f => ({ ...f, posInput: e.target.value }))}
               required

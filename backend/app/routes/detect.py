@@ -197,8 +197,8 @@ async def detect_airbirds(detection_data: dict):
             # 기본 CCTV 메타데이터 (테스트용)
             cctv_meta = {
                 "id": cctv_id,
-                "lat": 37.4631,  # 인천공항 좌표
-                "lon": 126.4407,
+                "lat": 34.8423,  # 여수공항 좌표
+                "lon": 127.6169,
                 "direction": 0,   # 동쪽 방향
                 "angle": 60,      # 60도 시야각
                 "length": 2       # 2km 거리
@@ -210,8 +210,8 @@ async def detect_airbirds(detection_data: dict):
                 cctv_meta["lon"] = cctv_meta["pos"][1]
             else:
                 # pos가 없거나 형식이 다르면 기본값 사용
-                cctv_meta["lat"] = 37.4631
-                cctv_meta["lon"] = 126.4407
+                cctv_meta["lat"] = 34.8423
+                cctv_meta["lon"] = 127.6169
             
             # 필수 필드들이 없으면 기본값 설정
             if "direction" not in cctv_meta:

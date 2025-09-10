@@ -30,9 +30,9 @@ function App() {
           // 좌표가 0-1 범위면 정규화된 좌표로 간주하고 변환 (이전 버전 호환성 유지용)
           if (cctv.pos[0] >= 0 && cctv.pos[0] <= 1 && cctv.pos[1] >= 0 && cctv.pos[1] <= 1) {
             const [u, v] = cctv.pos;
-            // 인천공항 영역으로 변환
-            const lat = 37.4550 + v * (37.4712 - 37.4550);
-            const lng = 126.4200 + u * (126.4614 - 126.4200);
+            // 여수공항 영역으로 변환
+            const lat = 34.8300 + v * (34.8550 - 34.8300);
+            const lng = 127.6000 + u * (127.6350 - 127.6000);
             return { ...cctv, pos: [lat, lng] as [number, number] };
           }
           return cctv;
@@ -90,8 +90,8 @@ function App() {
     const convertedCctvs = data.map(cctv => {
       if (cctv.pos[0] >= 0 && cctv.pos[0] <= 1 && cctv.pos[1] >= 0 && cctv.pos[1] <= 1) {
         const [u, v] = cctv.pos;
-        const lat = 37.4550 + v * (37.4712 - 37.4550);
-        const lng = 126.4200 + u * (126.4614 - 126.4200);
+        const lat = 34.8300 + v * (34.8550 - 34.8300);
+        const lng = 127.6000 + u * (127.6350 - 127.6000);
         return { ...cctv, pos: [lat, lng] as [number, number] };
       }
       return cctv;
@@ -113,8 +113,8 @@ function App() {
     const convertedCctvs = data.map(cctv => {
       if (cctv.pos[0] >= 0 && cctv.pos[0] <= 1 && cctv.pos[1] >= 0 && cctv.pos[1] <= 1) {
         const [u, v] = cctv.pos;
-        const lat = 37.4550 + v * (37.4712 - 37.4550);
-        const lng = 126.4200 + u * (126.4614 - 126.4200);
+        const lat = 34.8300 + v * (34.8550 - 34.8300);
+        const lng = 127.6000 + u * (127.6350 - 127.6000);
         return { ...cctv, pos: [lat, lng] as [number, number] };
       }
       return cctv;

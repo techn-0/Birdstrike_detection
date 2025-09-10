@@ -4,8 +4,8 @@ import L from "leaflet";
 import { CctvMeta } from "../types";
 import FOVIndicator from "./FOVIndicator";
 
-// 인천공항 실제 좌표 (위도, 경도)
-const INCHEON_AIRPORT_CENTER: [number, number] = [37.4631, 126.4407];
+// 여수공항 실제 좌표 (위도, 경도)
+const YEOSU_AIRPORT_CENTER: [number, number] = [34.8423, 127.6169];
 
 const API = process.env.REACT_APP_API_HTTP;
 
@@ -67,7 +67,7 @@ export default function MapView({
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <MapContainer
-        center={INCHEON_AIRPORT_CENTER}
+        center={YEOSU_AIRPORT_CENTER}
         zoom={14}         // 공항이 잘 보이는 줌 레벨
         style={{ height: "100%", width: "100%" }}
       >
