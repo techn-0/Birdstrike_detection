@@ -141,8 +141,15 @@ class CSVDetectionTester:
             csv_detection['height']
         ]
         
-        # 중심점 [center_x, center_y]
-        pos = [csv_detection['center_x'], csv_detection['center_y']]
+        # 이미지 크기 (D02 카메라 표준 해상도)
+        image_width = 1920.0   # 표준 FHD 해상도
+        image_height = 1080.0
+        
+        # 픽셀 좌표를 상대좌표로 변환 (0-1 범위)
+        pos = [
+            csv_detection['center_x'] / image_width,   # u (수평 상대좌표)
+            csv_detection['center_y'] / image_height   # v (수직 상대좌표)
+        ]
         
         # 새로운 위험도 기준 적용 (1개 객체 기준)
         confidence = csv_detection['confidence']
