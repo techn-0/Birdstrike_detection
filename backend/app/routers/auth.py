@@ -5,6 +5,7 @@ from app.core.security import hash_pw, verify_pw, create_access_token
 from app.dependencies import get_current_user
 from app.storage import fake_users_db
 from app.services.user_service import UserService
+from app.db import db
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
@@ -165,11 +166,43 @@ async def login(response: Response, user_credentials: UserLogin):
 
 
 @router.post("/logout")
-async def logout(response: Response):
-    """사용자 로그아웃"""
-    # 쿠키 삭제
-    response.delete_cookie(key="access_token", path="/")
-    return {"message": "Logout successful"}
+async def logout(response: Response, current_user: UserResponse = Depends(get_current_user)):
+    """사용자 로그아웃 및 탐지 결과 삭제"""
+    try:
+        # 1. 쿠키 삭제
+        response.delete_cookie(key="access_token", path="/")
+        
+        # 2. MongoDB에서 모든 탐지 결과 컬렉션 삭제
+        try:
+            # 모든 컬렉션 이름 조회
+            all_collections = await db.list_collection_names()
+            detection_cols = [name for name in all_collections if name.startswith("detections_")]
+            
+            # 각 탐지 컬렉션 삭제
+            for col_name in detection_cols:
+                await db.drop_collection(col_name)
+                print(f"Deleted detection collection: {col_name}")
+            
+            return {
+                "message": "Logout successful - All detection data cleared",
+                "deleted_collections": detection_cols
+            }
+            
+        except Exception as e:
+            print(f"Failed to clear detection data from MongoDB: {e}")
+            # 탐지 데이터 삭제에 실패해도 로그아웃은 성공으로 처리
+            return {
+                "message": "Logout successful - Warning: Detection data may not be cleared",
+                "error": str(e)
+            }
+            
+    except Exception as e:
+        # 로그아웃 실패 시에도 쿠키는 삭제 시도
+        response.delete_cookie(key="access_token", path="/")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Logout error: {str(e)}"
+        )
 
 
 @router.get("/me", response_model=UserResponse)
