@@ -43,9 +43,14 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
     // 캔버스 초기화
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 라벨 그리기 (스케일 적용)
+    // 라벨 그리기 (스케일 적용) - 신뢰도 임계값 이상인 라벨만 표시
     image.labels.forEach((label: DetectionLabel) => {
       const { x1, y1, x2, y2, confidence, class_name } = label;
+      
+      // 현재 신뢰도 임계값보다 낮은 라벨은 그리지 않음
+      if (confidence < confidenceThreshold) {
+        return;
+      }
       
       // 좌표를 표시 크기에 맞게 스케일링
       const scaledX1 = x1 * scaleX;
@@ -68,7 +73,7 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
       ctx.font = '12px Arial';
       ctx.fillText(`${class_name} ${(confidence * 100).toFixed(1)}%`, scaledX1 + 3, scaledY1 - 5);
     });
-  }, [showLabels]);
+  }, [showLabels, confidenceThreshold]);
 
   const loadPhotoSlidesData = useCallback(async () => {
     setLoading(true);
