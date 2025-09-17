@@ -187,26 +187,26 @@ export default function MapView({
           );
         })}
 
-        {/* AirBirds 탐지 결과 표시 - 각 CCTV별로 가장 최근 탐지 결과만 사용 */}
+        {/* AirBirds 탐지 결과 표시 - 실제 저장된 탐지 데이터 사용 */}
         {cctvs.map((cctv) => {
-          // 해당 CCTV의 가장 최근 탐지 결과만 가져오기
-          const latestDetection = latestDetectionByCctv[cctv.id];
-          if (!latestDetection) return null;
+          // 해당 CCTV의 탐지 결과 필터링
+          const cctvDetections = detections.filter(det => det.cctv_id === cctv.id);
+          if (cctvDetections.length === 0) return null;
           
-          // 최신 Detection 데이터를 ProcessedDetection 형식으로 변환
-          const processedDetections = [{
-            cctv_id: latestDetection.cctv_id,
-            pos: latestDetection.pos, // [u, v] 상대좌표
+          // Detection 데이터를 ProcessedDetection 형식으로 변환
+          const processedDetections = cctvDetections.map(det => ({
+            cctv_id: det.cctv_id,
+            pos: det.pos, // [u, v] 상대좌표
             class: "bird",
-            confidence: latestDetection.confidence || 0.5,
-            timestamp: latestDetection.captured_at,
+            confidence: det.confidence || 0.5,
+            timestamp: det.captured_at,
             original_bbox: {
-              x1: latestDetection.bbox[0],
-              y1: latestDetection.bbox[1], 
-              x2: latestDetection.bbox[0] + latestDetection.bbox[2],
-              y2: latestDetection.bbox[1] + latestDetection.bbox[3]
+              x1: det.bbox[0],
+              y1: det.bbox[1], 
+              x2: det.bbox[0] + det.bbox[2],
+              y2: det.bbox[1] + det.bbox[3]
             }
-          }];
+          }));
           
           return (
             <FOVIndicator
