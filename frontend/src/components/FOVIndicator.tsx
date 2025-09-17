@@ -11,35 +11,24 @@ interface Props {
   angle: number;
   length: number;
   detections: ProcessedDetection[];
+  cctvMeta: any;
 }
 
 const FOVIndicator: React.FC<Props> = ({ 
-  cameraLat, 
-  cameraLon, 
-  direction, 
-  angle, 
-  length, 
-  detections 
+  cameraLat,
+  cameraLon,
+  direction,
+  angle,
+  length,
+  detections,
+  cctvMeta
 }) => {
   
   const getBirdIcon = (confidence: number): L.DivIcon => {
-    // 신뢰도에 따라 다른 새 이모지 선택
+    // 새 이모지 선택
     let birdEmoji = '🐦';
     let bgColor = '#ffcc00';
-    
-    if (confidence > 0.8) {
-      birdEmoji = '🦅';  // 독수리 - 높은 신뢰도
-      bgColor = '#ff4444';
-    } else if (confidence > 0.6) {
-      birdEmoji = '🕊️';  // 비둘기 - 중간 신뢰도
-      bgColor = '#ff8800';
-    } else if (confidence > 0.4) {
-      birdEmoji = '🐦';  // 기본 새 - 보통 신뢰도
-      bgColor = '#ffcc00';
-    } else {
-      birdEmoji = '🐦‍⬛';  // 검은새 - 낮은 신뢰도
-      bgColor = '#888888';
-    }
+
 
     return L.divIcon({
       className: '',
@@ -69,8 +58,19 @@ const FOVIndicator: React.FC<Props> = ({
         const [u, v] = detection.pos;
         
         // 상대좌표를 실제 지리적 위치로 변환
-        const [dx, dy] = computeWorldOffset(u, v, angle, length, direction);
+        const imageWidth = cctvMeta.resolution?.[0] || 1920;
+        const imageHeight = cctvMeta.resolution?.[1] || 1080;
+
+        const bbox = [
+          detection.original_bbox.x1,
+          detection.original_bbox.y1,
+          detection.original_bbox.x2 - detection.original_bbox.x1,
+          detection.original_bbox.y2 - detection.original_bbox.y1
+        ];
+
+        const [dx, dy] = computeWorldOffset(u, v, angle, length, direction, bbox, imageWidth, imageHeight);
         const [lat, lon] = computeLatLon(cameraLat, cameraLon, dx, dy);
+        
         
         return (
           <Marker

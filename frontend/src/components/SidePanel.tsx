@@ -140,7 +140,7 @@ export default function SidePanel({
                 {c.is_photo_slides && (
                   <>
                     <br />
-                    <span className="text-green-600 font-semibold">📸 포토 슬라이드 활성화</span>
+                    <span className="text-green-600 font-semibold">탐지 결과 슬라이드 활성화</span>
                   </>
                 )}
               </div>
@@ -164,7 +164,7 @@ export default function SidePanel({
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#059669"}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#10b981"}
                   >
-                    📸 포토 슬라이드 보기
+                    탐지 결과 슬라이드 보기
                   </button>
                 )}
                 {isAdmin() && (

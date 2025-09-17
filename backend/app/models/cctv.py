@@ -1,3 +1,4 @@
+# models/cctv.py
 from pydantic import BaseModel
 from typing import Optional, Literal, List
 from datetime import datetime
@@ -8,38 +9,13 @@ class FovAngle(BaseModel):
     angle: float # 시야각 (0-180도)
     length: float # 거리
 
-
-# CSV 형식에 맞는 탐지 결과 모델
-class DetectionCSV(BaseModel):
-    """CSV 탐지 결과 형식 - 실제 AI 모델에서 제공하는 데이터"""
-    image_index: int
-    image_path: str
-    image_name: str
+class DetectionObject(BaseModel):
+    """개별 탐지 객체"""
     object_id: int
     class_name: str = "bird"
-    class_id: int = 0
-    x1: float
-    y1: float
-    x2: float
-    y2: float
     confidence: float
-    width: float
-    height: float
-    center_x: float
-    center_y: float
-    
-    # 추가 메타데이터 (API에서 보충)
-    cctv_id: Optional[str] = None
-    captured_at: Optional[datetime] = None
-
-
-# 다중 탐지 결과 (CSV에서 여러 개 객체 포함 가능)
-class DetectionBatch(BaseModel):
-    """여러 탐지 결과를 한 번에 처리"""
-    detections: List[DetectionCSV]
-    cctv_id: str
-    captured_at: Optional[datetime] = None
-
+    bbox: List[float]  # [x, y, w, h]
+    pos: List[float]   # [u, v]
 
 class Detection(BaseModel):
     cctv_id: str
@@ -50,6 +26,8 @@ class Detection(BaseModel):
     frame_url: Optional[str]
     fov: Optional[FovAngle] = None  # ← 이렇게 하면 fov 없이도 탐지 결과 저장 가능
     bird_count: int = 1   # 새 마리 수 기본값 1로 추가
+    # 다중 객체 지원 추가
+    objects: Optional[List[DetectionObject]] = None  # 개별 객체들
 
 
 class Result(BaseModel):

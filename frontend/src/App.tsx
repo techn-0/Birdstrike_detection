@@ -72,6 +72,9 @@ function App() {
   // WS로 새 Detection 받기 (실시간 반영)
   useWebSocket((d) => {
     setDets((prev) => [d, ...prev]);
+    console.log("새로운 Detection 받음:", d);
+    console.log("Objects 필드 존재?", 'objects' in d);
+  console.log("Objects 값:", d.objects);
   });
 
   // CCTV 추가/수정 함수

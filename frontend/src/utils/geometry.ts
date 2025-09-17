@@ -60,11 +60,21 @@ export function computeWorldOffset(
   v: number, 
   fovAngle: number, 
   fovLength: number, 
-  direction: number
+  direction: number,
+  bbox: number[],
+  imageWidth: number,
+  imageHeight: number
 ): [number, number] {
-  const angleOffset = (u - 0.5) * fovAngle;
-  const distance = v * fovLength;
+  // 객체 크기로 거리 계산
+  const widthPixels = bbox[2] * imageWidth;
+  const heightPixels = bbox[3] * imageHeight;
+  const avgSize = Math.sqrt(widthPixels * heightPixels);
   
+  // 30cm 새, 4픽셀 = 200m 기준으로 거리 추정
+  const estimatedDistance = (4 / avgSize) * fovLength;
+  const distance = Math.min(Math.max(estimatedDistance, 10), 1000);
+  
+  const angleOffset = (u - 0.5) * fovAngle;
   const actualBearing = direction + angleOffset;
   const radians = (actualBearing * Math.PI) / 180;
   

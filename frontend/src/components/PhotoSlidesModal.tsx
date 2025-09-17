@@ -79,19 +79,47 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API}/api/photo-slides/${cctvId}?confidence_threshold=${confidenceThreshold}`);
-      if (!response.ok) {
-        throw new Error('데이터를 불러올 수 없습니다.');
+      let allImages = [];
+      let page = 0;
+      let hasMore = true;
+      let totalImages = 0;
+
+      // 여러 페이지 데이터를 순차적으로 가져오기
+      while (hasMore) {
+        const response = await fetch(`${API}/api/photo-slides/${cctvId}?offset=${page * 1000}&limit=1000`);
+        if (!response.ok) {
+          throw new Error('데이터를 불러올 수 없습니다.');
+        }
+        
+        const result: PhotoSlidesData = await response.json();
+        
+        // 첫 번째 호출에서 총 개수 저장
+        if (page === 0) {
+          totalImages = result.total_images;
+        }
+        
+        // 이미지 배열에 추가
+        allImages.push(...result.images);
+        
+        // 더 가져올 데이터가 있는지 확인
+        hasMore = result.images.length === 1000 && allImages.length < totalImages;
+        page++;
+        
+        console.log(`페이지 ${page} 로드 완료: ${result.images.length}개, 총 누적: ${allImages.length}개`);
       }
-      const result: PhotoSlidesData = await response.json();
-      setData(result);
+
+      // 전체 데이터로 상태 업데이트
+      setData({total_images: totalImages, images: allImages, cctv_id: cctvId, confidence_threshold: confidenceThreshold});
       setCurrentIndex(0);
+      
+      console.log(`전체 로드 완료: ${allImages.length}/${totalImages}개 이미지`);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [cctvId, confidenceThreshold]);
+  }, [cctvId]);
 
   // 데이터 로드
   useEffect(() => {
@@ -142,16 +170,13 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const imgElement = e.currentTarget;
     if (data && data.images[currentIndex] && showLabels) {
-      // 이미지 로드 후 약간의 지연을 두고 라벨 그리기
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         drawLabelsOnCanvas(data.images[currentIndex], imgElement);
-      }, 100);
+      });
     }
   };
 
   if (!isOpen) return null;
-
-  console.log('PhotoSlidesModal 렌더링:', { isOpen, cctvId, cctvName });
 
   return (
     <div 
@@ -195,7 +220,7 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
             fontWeight: "bold",
             color: "#2563eb"
           }}>
-            📸 {cctvName} - 포토 슬라이드
+            📸 {cctvName} - 탐지 결과 슬라이드
           </h2>
           <button 
             onClick={onClose}
@@ -245,7 +270,6 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
                 step="0.1"
                 value={confidenceThreshold}
                 onChange={(e) => {
-                  setLoading(true); // 즉시 로딩 상태 시작
                   setConfidenceThreshold(Number(e.target.value));
                 }}
                 style={{ width: "80px" }}
@@ -277,8 +301,8 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
               >
                 <option value={2000}>느림 (2초)</option>
                 <option value={1000}>보통 (1초)</option>
-                <option value={500}>빠름 (0.5초)</option>
-                <option value={200}>매우 빠름 (0.2초)</option>
+                <option value={500}>빠름 (0.1초)</option>
+                <option value={50}>매우 빠름 (0.05초)</option>
               </select>
             </div>
 
@@ -481,9 +505,6 @@ export default function PhotoSlidesModal({ isOpen, onClose, cctvId, cctvName }: 
                   color: "#6b7280",
                   margin: 0
                 }}>
-                  최대 신뢰도: <span style={{ fontWeight: "600", color: "#2563eb" }}>
-                    {(data.images[currentIndex].max_confidence * 100).toFixed(1)}%
-                  </span> | 
                   탐지 개수: <span style={{ fontWeight: "600", color: "#16a34a" }}>
                     {data.images[currentIndex].detection_count}개
                   </span>

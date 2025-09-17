@@ -1,4 +1,4 @@
-# ws_manager.py - 간소화된 WebSocket 관리자
+# ws_manager.py
 from typing import List
 from fastapi import WebSocket
 from fastapi.encoders import jsonable_encoder

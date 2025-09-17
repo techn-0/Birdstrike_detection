@@ -1,3 +1,4 @@
+// src/components/MapView.tsx
 import React from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
@@ -187,39 +188,44 @@ export default function MapView({
           );
         })}
 
-        {/* AirBirds 탐지 결과 표시 - 각 CCTV별로 가장 최근 탐지 결과만 사용 */}
         {cctvs.map((cctv) => {
-          // 해당 CCTV의 가장 최근 탐지 결과만 가져오기
           const latestDetection = latestDetectionByCctv[cctv.id];
           if (!latestDetection) return null;
           
-          // 최신 Detection 데이터를 ProcessedDetection 형식으로 변환
-          const processedDetections = [{
-            cctv_id: latestDetection.cctv_id,
-            pos: latestDetection.pos, // [u, v] 상대좌표
-            class: "bird",
-            confidence: latestDetection.confidence || 0.5,
-            timestamp: latestDetection.captured_at,
-            original_bbox: {
-              x1: latestDetection.bbox[0],
-              y1: latestDetection.bbox[1], 
-              x2: latestDetection.bbox[0] + latestDetection.bbox[2],
-              y2: latestDetection.bbox[1] + latestDetection.bbox[3]
-            }
-          }];
-          
-          return (
-            <FOVIndicator
-              key={`fov-${cctv.id}`}
-              cameraLat={cctv.pos[0]}
-              cameraLon={cctv.pos[1]}
-              direction={cctv.direction}
-              angle={cctv.angle}
-              length={cctv.length}
-              detections={processedDetections}
-            />
-          );
-        })}
+          // ✅ objects 배열이 있으면 개별 객체들을 모두 처리
+          if (latestDetection.objects && latestDetection.objects.length > 0) {
+            const processedDetections = latestDetection.objects.map((obj: any) => ({
+              cctv_id: latestDetection.cctv_id,
+              pos: obj.pos, // ✅ 각 개별 객체의 위치
+              class: obj.class_name,
+              confidence: obj.confidence, // ✅ 각 개별 객체의 confidence
+              timestamp: latestDetection.captured_at,
+              object_id: obj.object_id,
+              original_bbox: {
+                x1: obj.bbox[0],
+                y1: obj.bbox[1],
+                x2: obj.bbox[0] + obj.bbox[2],
+                y2: obj.bbox[1] + obj.bbox[3]
+              }
+            }));
+            
+            return (
+              <FOVIndicator
+                key={`fov-${cctv.id}`}
+                cameraLat={cctv.pos[0]}
+                cameraLon={cctv.pos[1]}
+                direction={cctv.direction}
+                angle={cctv.angle}
+                length={cctv.length}
+                detections={processedDetections}
+                cctvMeta={cctv}
+              />
+            );
+          }})}
+
+
+
+        
       </MapContainer>
     </div>
   );

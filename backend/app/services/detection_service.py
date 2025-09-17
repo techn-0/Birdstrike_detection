@@ -2,7 +2,8 @@
 from datetime import datetime
 from ..db import db
 from ..ws_manager import manager
-from ..models.cctv import Detection, DetectionCSV
+from ..models.cctv import Detection, DetectionObject
+from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,37 +29,26 @@ class DetectionService:
             return "red"  # 즉시 경보 필요
 
     @staticmethod
-    def csv_to_detection(csv_detection: DetectionCSV, cctv_id: str = None) -> Detection:
-        """DetectionCSV를 Detection 모델로 변환"""
-        # bbox 배열 형식 [x1, y1, x2, y2]
-        bbox = [csv_detection.x1, csv_detection.y1, csv_detection.x2, csv_detection.y2]
+    def csv_batch_to_detection(objects: List[DetectionObject], cctv_id: str, frame_url: str) -> Detection:
+        # DetectionObject 리스트를 받아서 처리
+        confidences = [obj.confidence for obj in objects]
         
-        # pos 배열 형식 [center_x, center_y]
-        pos = [csv_detection.center_x, csv_detection.center_y]
+        representative_bbox = objects[0].bbox if objects else [0, 0, 0, 0]
+        representative_pos = objects[0].pos if objects else [0, 0]
         
-        # risk 계산 (새로운 기준 적용)
-        risk = DetectionService.calculate_risk_by_count_and_confidence(
-            bird_count=1, 
-            max_confidence=csv_detection.confidence
-        )
-        
-        # frame_url 생성
-        frame_url = f"/frames/{csv_detection.image_name}" if csv_detection.image_name else None
-        
-        # CCTV ID 결정
-        final_cctv_id = csv_detection.cctv_id or cctv_id or "unknown"
-        
-        # 시간 설정
-        captured_at = csv_detection.captured_at or datetime.now() 
+        bird_count = len(objects)
+        max_confidence = max(confidences) if confidences else 0.0
+        risk = DetectionService.calculate_risk_by_count_and_confidence(bird_count, max_confidence)
         
         return Detection(
-            cctv_id=final_cctv_id,
-            bbox=bbox,
-            pos=pos,
+            cctv_id=cctv_id,
+            bbox=representative_bbox,
+            pos=representative_pos,
             risk=risk,
-            captured_at=captured_at,
+            captured_at=datetime.now(),
             frame_url=frame_url,
-            bird_count=1
+            bird_count=bird_count,
+            objects=objects
         )
     
     @staticmethod
@@ -72,7 +62,8 @@ class DetectionService:
             "captured_at": detection.captured_at,
             "frame_url": detection.frame_url,
             "fov": detection.fov.dict() if detection.fov else None,
-            "bird_count": detection.bird_count
+            "bird_count": detection.bird_count,
+            "objects": [obj.dict() for obj in detection.objects] if detection.objects else None
         }
     
     @staticmethod

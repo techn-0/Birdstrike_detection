@@ -1,7 +1,7 @@
 # detect.py - 간소화된 탐지 API
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse
-from ..models.cctv import Detection, DetectionBatch, Result
+from ..models.cctv import Detection, DetectionObject, Result
 from ..services.detection_service import DetectionService
 from ..db import db
 from bson import ObjectId
@@ -10,6 +10,7 @@ import os
 import uuid
 import shutil
 from pathlib import Path
+from typing import List
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -34,20 +35,12 @@ async def detect_result(detection: Detection):
     """탐지 결과 처리 - 기존 경로 호환성"""
     return await detect(detection)
 
-@router.post("/detect/batch", response_model=Result)
-async def detect_batch(batch: DetectionBatch):
-    """여러 탐지 결과 일괄 처리"""
-    try:
-        for csv_detection in batch.detections:
-            # DetectionCSV를 Detection으로 변환
-            detection = DetectionService.csv_to_detection(csv_detection, batch.cctv_id)
-            
-            await DetectionService.process_detection(detection)
-        
-        return Result(ok=True)
-    except Exception as exc:
-        logger.error(f"Batch detection failed: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail="일괄 탐지 결과 처리 실패")
+@router.post("/detect/objects", response_model=Result)
+async def detect_objects(objects: List[DetectionObject], cctv_id: str, frame_url: str):
+    """다중 객체 탐지 결과 처리"""
+    detection = DetectionService.csv_batch_to_detection(objects, cctv_id, frame_url)
+    await DetectionService.process_detection(detection)
+    return Result(ok=True)
 
 @router.get("/detect/history/{cctv_id}")
 async def get_history(cctv_id: str):
